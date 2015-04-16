@@ -25,13 +25,24 @@ int main(int argc, const char* argv[])
 {
     while(1)
     {
-        char input[80], cmd[80], buf[100];
+        char input[80], cmd[80], wd[PATH_MAX];
         int i;
 
-        printf("> "); /* Prompt */
+        /* Prompt */
+        if (!getcwd(wd, PATH_MAX))
+        {
+            perror("Failed to get current working directory");
+            exit(1);
+        }
+        printf("%s", wd);
+        printf(" > ");
 
         /* Exit if error occurs */
-        if (!fgets(input, 80, stdin)) exit(1);
+        if (!fgets(input, 80, stdin))
+        {
+            perror("Failed to get input");
+            continue;
+        }
 
         /* Remove newline, if present */
         i = strlen(input) - 1;
@@ -51,8 +62,21 @@ int main(int argc, const char* argv[])
             }
             else if (strcmp(cmd, "cd") == 0)
             {
+                if (input[i] == '\0')
+                {
+                    char* home = getenv("HOME");
+                    if (!home)
+                    {
+                        perror("Failed to get home directory");
+                        break;
+                    }
+                    else if (chdir(home))
+                    {
+                        perror("Failed to change directory to HOME");
+                        break;
+                    }
+                }
                 printf("cd\n");
-                printf("%s\n", getwd(buf));
             }
             else if (strcmp(cmd, "checkEnv") == 0)
             {
