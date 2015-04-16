@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "shell.h"
 
@@ -34,6 +35,8 @@ int main(int argc, const char* argv[])
             if (strcmp(cmd, "exit") == 0)
             {
                 printf("exit\n");
+                /* TODO Kill all children */
+                exit(0);
             }
             else if (strcmp(cmd, "cd") == 0)
             {
