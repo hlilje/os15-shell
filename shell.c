@@ -1,6 +1,5 @@
 #include "shell.h"
 
-
 int read_cmd(char* cmd, const char* input, int i)
 {
     /* Read one command */
@@ -25,7 +24,7 @@ int main(int argc, const char* argv[])
 {
     while(1)
     {
-        char input[80], cmd[80], wd[PATH_MAX], grepargs[128];
+        char input[80], cmd[80], wd[PATH_MAX], checkenv[128];
         int i;
 
         /* Prompt */
@@ -89,19 +88,41 @@ int main(int argc, const char* argv[])
                 }
             }
             else if (strcmp(cmd, "checkEnv") == 0)
-            {
+            {                
+                char* pager = getenv("PAGER");
+                strcpy(checkenv, "printenv");
                 /* Get all given arguments */
-                i = read_cmd(cmd, input, i);
-                strcpy(grepargs, "printenv ");
                 if (input[i] != '\0')
                 {
-                    strcat(grepargs, "| grep ");
-                    strcat(grepargs, &input[i]);
+                    strcat(checkenv, " | grep ");
+                    strcat(checkenv, &input[i]);
                 }
-                strcat(grepargs, "| sort ");
-                char* pager = getenv("PAGER");
-                if (!pager)
+                strcat(checkenv, " | sort | ");
+                /* Try to execute with PAGER environment variabel */
+                if (pager)
                 {
+                    strcat(checkenv, pager);
+                    if(system(checkenv))
+                    {
+                        perror("Failed to to execute checkEnv with environment pager");
+                        break;
+                    }
+                }
+                /* Try to execute with pager `less`, then `more` */
+                else
+                {
+                    char checkenvtmp[128];
+                    strcpy(checkenvtmp, checkenv);
+                    strcat(checkenv, "less");
+                    if(system(checkenv))
+                    {
+                        strcat(checkenvtmp, "more");
+                        if(system(checkenvtmp))
+                        {
+                            perror("Failed to to execute checkEnv with default pagers");
+                            break;
+                        }
+                    }
                 }
             }
             else
