@@ -25,7 +25,7 @@ int main(int argc, const char* argv[])
 {
     while(1)
     {
-        char input[80], cmd[80], wd[PATH_MAX];
+        char input[80], cmd[80], wd[PATH_MAX], grepargs[128];
         int i;
 
         /* Prompt */
@@ -90,7 +90,19 @@ int main(int argc, const char* argv[])
             }
             else if (strcmp(cmd, "checkEnv") == 0)
             {
-                printf("checkEnv\n");
+                /* Get all given arguments */
+                i = read_cmd(cmd, input, i);
+                strcpy(grepargs, "printenv ");
+                if (input[i] != '\0')
+                {
+                    strcat(grepargs, "| grep ");
+                    strcat(grepargs, &input[i]);
+                }
+                strcat(grepargs, "| sort ");
+                char* pager = getenv("PAGER");
+                if (!pager)
+                {
+                }
             }
             else
             {
