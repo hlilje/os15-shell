@@ -12,7 +12,8 @@ int main(int argc, const char* argv[])
 
         printf("> "); /* Prompt */
 
-        fgets(input, 80, stdin);
+        /* Exit if error occurs */
+        if(!fgets(input, 80, stdin)) exit(1);
 
         /* Remove newline, if present */
         i = strlen(input) - 1;
