@@ -1,7 +1,7 @@
 TARGET = shell
 #LIBS = -lm
 CC = gcc
-CFLAGS = -pedantic -Wall -ANSI -O4
+CFLAGS = -pedantic -Wall -std=c89 -O4
 
 .PHONY: clean all default
 
