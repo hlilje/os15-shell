@@ -62,7 +62,8 @@ int main(int argc, const char* argv[])
             }
             else if (strcmp(cmd, "cd") == 0)
             {
-                if (input[i] == '\0')
+                /* Change to home directory */
+                if (input[i] == '\0' || input[i] == '~')
                 {
                     char* home = getenv("HOME");
                     if (!home)
@@ -76,7 +77,16 @@ int main(int argc, const char* argv[])
                         break;
                     }
                 }
-                printf("cd\n");
+                /* Change to given directory */
+                else
+                {
+                    i = read_cmd(cmd, input, i);
+                    if (chdir(cmd))
+                    {
+                        perror("Failed to change directory");
+                        break;
+                    }
+                }
             }
             else if (strcmp(cmd, "checkEnv") == 0)
             {
