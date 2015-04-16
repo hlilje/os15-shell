@@ -6,16 +6,50 @@ int main(int argc, const char* argv[])
 {
     for (;;)
     {
-        char str[80]; /* Fixed length */
-        int i;
+        char input[80], cmd[80];
+        int i, j;
 
-        fgets(str, 80, stdin);
+        printf("> "); /* Prompt */
+
+        fgets(input, 80, stdin);
 
         /* Remove newline, if present */
-        i = strlen(str) - 1;
-        if(str[ i ] == '\n') str[i] = '\0';
+        i = strlen(input) - 1;
+        if (input[i] == '\n') input[i] = '\0';
 
-        printf("%s\n", str);
+        /* Read given commands */
+        for (i = 0;; ++i, ++j) /* Increment to skip space */
+        {
+            /* Read one command */
+            for (j = 0; ; ++i, ++j)
+            {
+                cmd[j] = input[i];
+                if (input[i] == ' ' || input[i] == '\0')
+                {
+                    cmd[j] = '\0';
+                    break;
+                }
+            }
+
+            if (strcmp(cmd, "exit") == 0)
+            {
+                printf("exit\n");
+            }
+            else if (strcmp(cmd, "cd") == 0)
+            {
+                printf("cd\n");
+            }
+            else if (strcmp(cmd, "checkEnv") == 0)
+            {
+                printf("checkEnv\n");
+            }
+            else
+            {
+                printf("else\n");
+            }
+
+            if (input[i] == '\0') break;
+        }
     }
 
     return 0;
