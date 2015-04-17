@@ -25,7 +25,7 @@ int main(int argc, const char* argv[])
     while(1)
     {
         char input[80], cmd[80], wd[PATH_MAX], checkenv[128];
-        int i, status;
+        int i, j, do_fork;
         pid_t pid;
 
         /* Prompt */
@@ -49,96 +49,114 @@ int main(int argc, const char* argv[])
         if (input[i] == '\n') input[i] = '\0';
 
         /* Read given commands */
-        for(i = 0;;)
-        {
-            /* Read one command */
-            i = read_cmd(cmd, input, i);
+        i = 0; /* Input index */
+        i = read_cmd(cmd, input, i);
 
-            if (strcmp(cmd, "exit") == 0)
+        if (strcmp(cmd, "exit") == 0)
+        {
+            printf("exit\n");
+            /* TODO Kill all children */
+            exit(0);
+        }
+        else if (strcmp(cmd, "cd") == 0)
+        {
+            /* Change to home directory */
+            if (input[i] == '\0' || input[i] == '~')
             {
-                printf("exit\n");
-                /* TODO Kill all children */
-                exit(0);
-            }
-            else if (strcmp(cmd, "cd") == 0)
-            {
-                /* Change to home directory */
-                if (input[i] == '\0' || input[i] == '~')
+                char* home = getenv("HOME");
+                if (!home)
                 {
-                    char* home = getenv("HOME");
-                    if (!home)
-                    {
-                        perror("Failed to get home directory");
-                        break;
-                    }
-                    else if (chdir(home))
-                    {
-                        perror("Failed to change directory to HOME");
-                        break;
-                    }
+                    perror("Failed to get home directory");
+                    break;
                 }
-                /* Change to given directory */
-                else
+                else if (chdir(home))
                 {
-                    i = read_cmd(cmd, input, i);
-                    if (chdir(cmd))
-                    {
-                        perror("Failed to change directory");
-                        break;
-                    }
+                    perror("Failed to change directory to HOME");
+                    break;
                 }
             }
-            else if (strcmp(cmd, "checkEnv") == 0)
-            {
-                char* pager = getenv("PAGER");
-                strcpy(checkenv, "printenv");
-                /* Get all given arguments */
-                if (input[i] != '\0')
-                {
-                    strcat(checkenv, " | grep ");
-                    strcat(checkenv, &input[i]);
-                }
-                strcat(checkenv, " | sort | ");
-                /* Try to execute with PAGER environment variable */
-                if (pager)
-                {
-                    strcat(checkenv, pager);
-                    if(system(checkenv))
-                    {
-                        perror("Failed to to execute checkEnv with environment pager");
-                        break;
-                    }
-                }
-                /* Try to execute with pager `less`, then `more` */
-                else
-                {
-                    char checkenvtmp[128];
-                    strcpy(checkenvtmp, checkenv);
-                    strcat(checkenv, "less");
-                    if(system(checkenv))
-                    {
-                        strcat(checkenvtmp, "more");
-                        if(system(checkenvtmp))
-                        {
-                            perror("Failed to to execute checkEnv with default pagers");
-                            break;
-                        }
-                    }
-                }
-            }
+            /* Change to given directory */
             else
             {
-                printf("else\n");
                 i = read_cmd(cmd, input, i);
-                printf("%s\n", cmd);
+                if (chdir(cmd))
+                {
+                    perror("Failed to change directory");
+                    break;
+                }
+            }
+        }
+        else if (strcmp(cmd, "checkEnv") == 0)
+        {
+            char* pager = getenv("PAGER");
+            strcpy(checkenv, "printenv");
+            /* Get all given arguments */
+            if (input[i] != '\0')
+            {
+                strcat(checkenv, " | grep ");
+                strcat(checkenv, &input[i]);
+            }
+            strcat(checkenv, " | sort | ");
+            /* Try to execute with PAGER environment variable */
+            if (pager)
+            {
+                strcat(checkenv, pager);
+                if (system(checkenv))
+                {
+                    perror("Failed to to execute checkEnv with environment pager");
+                    break;
+                }
+            }
+            /* Try to execute with pager `less`, then `more` */
+            else
+            {
+                char checkenvtmp[128];
+                strcpy(checkenvtmp, checkenv);
+                strcat(checkenv, "less");
+                if(system(checkenv))
+                {
+                    strcat(checkenvtmp, "more");
+                    if(system(checkenvtmp))
+                    {
+                        perror("Failed to to execute checkEnv with default pagers");
+                        break;
+                    }
+                }
+            }
+        }
+        else
+        {
+            /* Read the entire command string */
+            do_fork = 0;
+            for (j = 0; ; ++j)
+            {
+                /* Check if the process should run in the background */
+                if (input[i] == '&')
+                {
+                    do_fork = 1;
+                    input[j] = '\0';
+                    break;
+                }
+                else if (input[i] == '\0')
+                {
+                    break;
+                }
+            }
 
+            /* TODO Doesn't fork correctly */
+            if (do_fork)
+            {
                 pid = fork();
 
                 /* Child process */
                 if (pid == 0)
                 {
                     printf("Child\n");
-                    execl("/bin/ls", "ls", NULL);
+                    if (system(input))
+                    {
+                        perror("Failed to execute forked command");
+                    }
+
                     _exit(0); /* exit() unreliable */
                 }
                 /* Error */
@@ -147,16 +165,15 @@ int main(int argc, const char* argv[])
                     perror("Failed to fork child process");
                     exit(1);
                 }
-                /* Parent process */
-                else
+            }
+            else
+            {
+                printf("Parent\n");
+                if (system(input))
                 {
-                    printf("Parent\n");
-                    /* Wait for child process to finish */
-                    waitpid(pid, &status, 0);
+                    perror("Failed to execute command");
                 }
             }
-
-            if (input[i] == '\0') break;
         }
     }
 
