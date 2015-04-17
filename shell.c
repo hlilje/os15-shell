@@ -131,27 +131,25 @@ int main(int argc, const char* argv[])
             for (j = 0; ; ++j)
             {
                 /* Check if the process should run in the background */
-                if (input[i] == '&')
+                if (input[j] == '&')
                 {
                     do_fork = 1;
                     input[j] = '\0';
                     break;
                 }
-                else if (input[i] == '\0')
+                else if (input[j] == '\0')
                 {
                     break;
                 }
             }
 
-            /* TODO Doesn't fork correctly */
             if (do_fork)
             {
-                pid = fork();
+                pid = fork(); /* Create new child process */
 
                 /* Child process */
                 if (pid == 0)
                 {
-                    printf("Child\n");
                     if (system(input))
                     {
                         perror("Failed to execute forked command");
@@ -165,10 +163,16 @@ int main(int argc, const char* argv[])
                     perror("Failed to fork child process");
                     exit(1);
                 }
+                else
+                {
+                    /* The parent process comes here after forking */
+                    /* int status; */
+                    /* waitpid(pid, &status, 0); */
+                }
             }
+            /* Parent process */
             else
             {
-                printf("Parent\n");
                 if (system(input))
                 {
                     perror("Failed to execute command");
