@@ -25,7 +25,8 @@ int main(int argc, const char* argv[])
     while(1)
     {
         char input[80], cmd[80], wd[PATH_MAX], checkenv[128];
-        int i;
+        int i, status;
+        pid_t pid;
 
         /* Prompt */
         if (!getcwd(wd, PATH_MAX))
@@ -88,7 +89,7 @@ int main(int argc, const char* argv[])
                 }
             }
             else if (strcmp(cmd, "checkEnv") == 0)
-            {                
+            {
                 char* pager = getenv("PAGER");
                 strcpy(checkenv, "printenv");
                 /* Get all given arguments */
@@ -98,7 +99,7 @@ int main(int argc, const char* argv[])
                     strcat(checkenv, &input[i]);
                 }
                 strcat(checkenv, " | sort | ");
-                /* Try to execute with PAGER environment variabel */
+                /* Try to execute with PAGER environment variable */
                 if (pager)
                 {
                     strcat(checkenv, pager);
@@ -128,6 +129,30 @@ int main(int argc, const char* argv[])
             else
             {
                 printf("else\n");
+                i = read_cmd(cmd, input, i);
+                printf("%s\n", cmd);
+
+                pid = fork();
+
+                /* Child process */
+                if (pid == 0)
+                {
+                    printf("Child\n");
+                    _exit(0); /* exit() unreliable */
+                }
+                /* Error */
+                else if (pid < 0)
+                {
+                    perror("Failed to fork child process");
+                    exit(1);
+                }
+                /* Parent process */
+                else
+                {
+                    printf("Parent\n");
+                    /* Wait for child process to finish */
+                    waitpid(pid, &status, 0);
+                }
             }
 
             if (input[i] == '\0') break;
