@@ -138,6 +138,7 @@ int main(int argc, const char* argv[])
                 if (pid == 0)
                 {
                     printf("Child\n");
+                    execl("/bin/ls", "ls", NULL);
                     _exit(0); /* exit() unreliable */
                 }
                 /* Error */

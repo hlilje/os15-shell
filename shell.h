@@ -1,4 +1,8 @@
+#ifdef __APPLE__
 #include <limits.h>
+#else
+#include <linux/limits.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
