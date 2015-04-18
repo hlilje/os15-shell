@@ -1,2 +1,3 @@
-# os15-shell
+# Simple Shell
+
 An implementation of a simple shell.
