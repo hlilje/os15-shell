@@ -21,11 +21,44 @@ int read_cmd(char* cmd, const char* input, int i)
     return i;
 }
 
-void exit_shell()
+int exit_shell()
 {
     printf("exit\n");
     /* TODO Kill all children */
     exit(0);
+
+    return 1;
+}
+
+int cd(const char* input, char* cmd, int i)
+{
+    /* Change to home directory */
+    if (input[i] == '\0' || input[i] == '~')
+    {
+        char* home = getenv("HOME");
+        if (!home)
+        {
+            perror("Failed to get home directory");
+            return 0;
+        }
+        else if (chdir(home))
+        {
+            perror("Failed to change directory to HOME");
+            return 0;
+        }
+    }
+    /* Change to given directory */
+    else
+    {
+        i = read_cmd(cmd, input, i);
+        if (chdir(cmd))
+        {
+            perror("Failed to change directory");
+            return 0;
+        }
+    }
+
+    return 1;
 }
 
 int checkEnv(char* input, int i)
@@ -103,35 +136,11 @@ int main(int argc, const char* argv[])
 
         if (strcmp(cmd, "exit") == 0)
         {
-            exit_shell();
+            if (!exit_shell()) break;
         }
         else if (strcmp(cmd, "cd") == 0)
         {
-            /* Change to home directory */
-            if (input[i] == '\0' || input[i] == '~')
-            {
-                char* home = getenv("HOME");
-                if (!home)
-                {
-                    perror("Failed to get home directory");
-                    break;
-                }
-                else if (chdir(home))
-                {
-                    perror("Failed to change directory to HOME");
-                    break;
-                }
-            }
-            /* Change to given directory */
-            else
-            {
-                i = read_cmd(cmd, input, i);
-                if (chdir(cmd))
-                {
-                    perror("Failed to change directory");
-                    break;
-                }
-            }
+            if (!cd(input, cmd, i)) break;
         }
         else if (strcmp(cmd, "checkEnv") == 0)
         {

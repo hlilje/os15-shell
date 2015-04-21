@@ -20,9 +20,10 @@ int read_cmd(char* cmd, const char* input, int i);
 /**
  * Exit the shell.
  */
-void exit_shell();
+int exit_shell();
 
 /**
  * Change directory.
+ * Return 0 upon failure and 1 upon success.
  */
-int cd();
+int cd(const char* input, char* cmd, int i);
