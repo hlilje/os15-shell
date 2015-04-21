@@ -1,5 +1,6 @@
 #include "shell.h"
 
+
 int read_cmd(char* cmd, const char* input, int i)
 {
     /* Read one command */
@@ -18,6 +19,13 @@ int read_cmd(char* cmd, const char* input, int i)
     }
 
     return i;
+}
+
+void exit_shell()
+{
+    printf("exit\n");
+    /* TODO Kill all children */
+    exit(0);
 }
 
 int main(int argc, const char* argv[])
@@ -54,9 +62,7 @@ int main(int argc, const char* argv[])
 
         if (strcmp(cmd, "exit") == 0)
         {
-            printf("exit\n");
-            /* TODO Kill all children */
-            exit(0);
+            exit_shell();
         }
         else if (strcmp(cmd, "cd") == 0)
         {

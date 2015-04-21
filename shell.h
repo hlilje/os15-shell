@@ -6,9 +6,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 
 /**
@@ -16,3 +16,13 @@
  * Return the new index i.
  */
 int read_cmd(char* cmd, const char* input, int i);
+
+/**
+ * Exit the shell.
+ */
+void exit_shell();
+
+/**
+ * Change directory.
+ */
+int cd();
