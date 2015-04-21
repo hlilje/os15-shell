@@ -19,6 +19,7 @@ int read_cmd(char* cmd, const char* input, int i);
 
 /**
  * Exit the shell.
+ * Return 0 upon failure and 1 upon success.
  */
 int exit_shell();
 
@@ -30,5 +31,6 @@ int cd(const char* input, char* cmd, int i);
 
 /**
  * Check environment variables
+ * Return 0 upon failure and 1 upon success.
  */
-int checkEnv(char* input, int i);
+int check_env(const char* input, int i);

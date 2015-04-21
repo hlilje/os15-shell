@@ -61,7 +61,7 @@ int cd(const char* input, char* cmd, int i)
     return 1;
 }
 
-int checkEnv(char* input, int i)
+int check_env(const char* input, int i)
 {
     char checkenv[128];
     char* pager = getenv("PAGER");
@@ -144,7 +144,7 @@ int main(int argc, const char* argv[])
         }
         else if (strcmp(cmd, "checkEnv") == 0)
         {
-            if (!checkEnv(input, i))
+            if (!check_env(input, i))
                 break;
         }
         else
