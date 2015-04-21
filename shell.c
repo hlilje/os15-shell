@@ -28,11 +28,52 @@ void exit_shell()
     exit(0);
 }
 
+int checkEnv(char* input, int i)
+{
+    char checkenv[128];
+    char* pager = getenv("PAGER");
+    strcpy(checkenv, "printenv");
+    /* Get all given arguments */
+    if (input[i] != '\0')
+    {
+        strcat(checkenv, " | grep ");
+        strcat(checkenv, &input[i]);
+    }
+    strcat(checkenv, " | sort | ");
+    /* Try to execute with PAGER environment variable */
+    if (pager)
+    {
+        strcat(checkenv, pager);
+        if (system(checkenv))
+        {
+            perror("Failed to to execute checkEnv with environment pager");
+            return 0;
+        }
+    }
+    /* Try to execute with pager `less`, then `more` */
+    else
+    {
+        char checkenvtmp[128];
+        strcpy(checkenvtmp, checkenv);
+        strcat(checkenv, "less");
+        if(system(checkenv))
+        {
+            strcat(checkenvtmp, "more");
+            if(system(checkenvtmp))
+            {
+                perror("Failed to to execute checkEnv with default pagers");
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+
 int main(int argc, const char* argv[])
 {
     while(1)
     {
-        char input[80], cmd[80], wd[PATH_MAX], checkenv[128];
+        char input[80], cmd[80], wd[PATH_MAX];
         int i, j, do_fork;
         pid_t pid;
 
@@ -94,41 +135,8 @@ int main(int argc, const char* argv[])
         }
         else if (strcmp(cmd, "checkEnv") == 0)
         {
-            char* pager = getenv("PAGER");
-            strcpy(checkenv, "printenv");
-            /* Get all given arguments */
-            if (input[i] != '\0')
-            {
-                strcat(checkenv, " | grep ");
-                strcat(checkenv, &input[i]);
-            }
-            strcat(checkenv, " | sort | ");
-            /* Try to execute with PAGER environment variable */
-            if (pager)
-            {
-                strcat(checkenv, pager);
-                if (system(checkenv))
-                {
-                    perror("Failed to to execute checkEnv with environment pager");
-                    break;
-                }
-            }
-            /* Try to execute with pager `less`, then `more` */
-            else
-            {
-                char checkenvtmp[128];
-                strcpy(checkenvtmp, checkenv);
-                strcat(checkenv, "less");
-                if(system(checkenv))
-                {
-                    strcat(checkenvtmp, "more");
-                    if(system(checkenvtmp))
-                    {
-                        perror("Failed to to execute checkEnv with default pagers");
-                        break;
-                    }
-                }
-            }
+            if (!checkEnv(input, i))
+                break;
         }
         else
         {
