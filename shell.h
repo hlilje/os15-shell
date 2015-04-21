@@ -27,3 +27,8 @@ int exit_shell();
  * Return 0 upon failure and 1 upon success.
  */
 int cd(const char* input, char* cmd, int i);
+
+/**
+ * Check environment variables
+ */
+int checkEnv(char* input, int i);
