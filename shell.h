@@ -10,6 +10,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#define READ  0
+#define WRITE 1
+
 
 /**
  * Read one command from input into cmd.

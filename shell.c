@@ -66,6 +66,98 @@ int check_env(const char* input, int i)
     char checkenv[128], checkenvtmp[128];
     char* pager = getenv("PAGER");
 
+    pid_t pid_printenv, pid_grep;
+	int pipes[2], status;
+
+	/* Get file descriptors */
+	if (pipe(pipes))
+    {
+        perror("Failed to create pipe for printenv");
+        return 0;
+    }
+
+    /* Create new printenv process */
+    pid_printenv = fork();
+
+    if (pid_printenv < 0)
+    {
+        perror("Failed to fork for printenv");
+        return 0;
+    }
+    /* Child process */
+    else if (pid_printenv == 0)
+    {
+        /* Copy and overwrite file descriptor */
+        dup2(pipes[WRITE], WRITE);
+
+        /* Delete file descriptors */
+        if (close(pipes[WRITE]))
+        {
+            perror("Failed to delete file descriptor");
+            return 0;
+        }
+        if (close(pipes[READ]))
+        {
+            perror("Failed to delete file descriptor");
+            return 0;
+        }
+
+        /* Execute printenv via path */
+        if (execlp("printenv", "printenv", NULL))
+        {
+            perror("Failed to execute printenv");
+            return 0;
+        }
+    }
+
+    /* Create new grep process */
+    pid_grep = fork();
+    if (pid_grep < 0)
+    {
+        perror("Failed to create pipe for grep");
+        return 0;
+    }
+    /* Child process */
+    else if (pid_grep == 0)
+    {
+        /* Copy and overwrite file descriptor */
+        dup2(pipes[READ], READ);
+
+        /* Delete file descriptors */
+        if (close(pipes[WRITE]))
+        {
+            perror("Failed to delete file descriptor");
+            return 0;
+        }
+        if (close(pipes[READ]))
+        {
+            perror("Failed to delete file descriptor");
+            return 0;
+        }
+
+        /* Execute grep via path */
+        if (execlp("grep", "grep", NULL))
+        {
+            perror("Failed to execute grep");
+            return 0;
+        }
+    }
+
+    /* Wait for the processes to finish */
+    if (wait(&status) < 0)
+    {
+        perror("Failed to wait for first process");
+        return 0;
+    }
+    if (wait(&status) < 0)
+    {
+        perror("Failed to wait for second process");
+        return 0;
+    }
+
+	/* TODO */
+	return 1;
+
     strcpy(checkenv, "printenv");
     /* Get all given arguments */
     if (input[i] != '\0')
@@ -118,11 +210,11 @@ int general_cmd(char* input)
         {
             do_fork = 1;
             input[i] = '\0';
-            return 0;
+            break;
         }
         else if (input[i] == '\0')
         {
-            return 0;
+            break;
         }
     }
 
