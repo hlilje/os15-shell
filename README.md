@@ -1,3 +1,3 @@
 # Simple Shell
 
-An implementation of a simple shell.
+An ANSI C implementation of a simple shell.
