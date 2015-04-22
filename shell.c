@@ -89,10 +89,10 @@ int check_env(const char* input, int i)
         char checkenvtmp[128];
         strcpy(checkenvtmp, checkenv);
         strcat(checkenv, "less");
-        if(system(checkenv))
+        if (system(checkenv))
         {
             strcat(checkenvtmp, "more");
-            if(system(checkenvtmp))
+            if (system(checkenvtmp))
             {
                 perror("Failed to to execute checkEnv with default pagers");
                 return 0;
@@ -144,8 +144,7 @@ int main(int argc, const char* argv[])
         }
         else if (strcmp(cmd, "checkEnv") == 0)
         {
-            if (!check_env(input, i))
-                break;
+            if (!check_env(input, i)) break;
         }
         else
         {
