@@ -34,3 +34,9 @@ int cd(const char* input, char* cmd, int i);
  * Return 0 upon failure and 1 upon success.
  */
 int check_env(const char* input, int i);
+
+/**
+ * Execute arbitrary commands given to the shell.
+ * Return 0 upon failure and 1 upon success.
+ */
+int general_cmd(char* input);

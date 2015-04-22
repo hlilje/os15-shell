@@ -63,8 +63,9 @@ int cd(const char* input, char* cmd, int i)
 
 int check_env(const char* input, int i)
 {
-    char checkenv[128];
+    char checkenv[128], checkenvtmp[128];
     char* pager = getenv("PAGER");
+
     strcpy(checkenv, "printenv");
     /* Get all given arguments */
     if (input[i] != '\0')
@@ -73,6 +74,7 @@ int check_env(const char* input, int i)
         strcat(checkenv, &input[i]);
     }
     strcat(checkenv, " | sort | ");
+
     /* Try to execute with PAGER environment variable */
     if (pager)
     {
@@ -86,7 +88,6 @@ int check_env(const char* input, int i)
     /* Try to execute with pager `less`, then `more` */
     else
     {
-        char checkenvtmp[128];
         strcpy(checkenvtmp, checkenv);
         strcat(checkenv, "less");
         if (system(checkenv))
@@ -99,6 +100,68 @@ int check_env(const char* input, int i)
             }
         }
     }
+
+    return 1;
+}
+
+int general_cmd(char* input)
+{
+    int i, do_fork;
+    pid_t pid;
+
+    /* Read the entire command string */
+    do_fork = 0;
+    for (i = 0; ; ++i)
+    {
+        /* Check if the process should run in the background */
+        if (input[i] == '&')
+        {
+            do_fork = 1;
+            input[i] = '\0';
+            return 0;
+        }
+        else if (input[i] == '\0')
+        {
+            return 0;
+        }
+    }
+
+    if (do_fork)
+    {
+        pid = fork(); /* Create new child process */
+
+        /* Child process */
+        if (pid == 0)
+        {
+            if (system(input))
+            {
+                perror("Failed to execute forked command");
+            }
+
+            _exit(0); /* exit() unreliable */
+        }
+        /* Error */
+        else if (pid < 0)
+        {
+            perror("Failed to fork child process");
+            exit(1);
+        }
+        else
+        {
+            /* The parent process comes here after forking */
+            /* int status; */
+            /* waitpid(pid, &status, 0); */
+        }
+    }
+    /* Parent process */
+    else
+    {
+        if (system(input))
+        {
+            perror("Failed to execute command");
+        }
+    }
+
     return 1;
 }
 
@@ -107,8 +170,7 @@ int main(int argc, const char* argv[])
     while(1)
     {
         char input[80], cmd[80], wd[PATH_MAX];
-        int i, j, do_fork;
-        pid_t pid;
+        int i;
 
         /* Prompt */
         if (!getcwd(wd, PATH_MAX))
@@ -148,58 +210,7 @@ int main(int argc, const char* argv[])
         }
         else
         {
-            /* Read the entire command string */
-            do_fork = 0;
-            for (j = 0; ; ++j)
-            {
-                /* Check if the process should run in the background */
-                if (input[j] == '&')
-                {
-                    do_fork = 1;
-                    input[j] = '\0';
-                    break;
-                }
-                else if (input[j] == '\0')
-                {
-                    break;
-                }
-            }
-
-            if (do_fork)
-            {
-                pid = fork(); /* Create new child process */
-
-                /* Child process */
-                if (pid == 0)
-                {
-                    if (system(input))
-                    {
-                        perror("Failed to execute forked command");
-                    }
-
-                    _exit(0); /* exit() unreliable */
-                }
-                /* Error */
-                else if (pid < 0)
-                {
-                    perror("Failed to fork child process");
-                    exit(1);
-                }
-                else
-                {
-                    /* The parent process comes here after forking */
-                    /* int status; */
-                    /* waitpid(pid, &status, 0); */
-                }
-            }
-            /* Parent process */
-            else
-            {
-                if (system(input))
-                {
-                    perror("Failed to execute command");
-                }
-            }
+            if (!general_cmd(input)) break;
         }
     }
 
