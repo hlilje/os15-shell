@@ -88,7 +88,11 @@ int check_env(const char* input, int i)
     else if (pid_printenv == 0)
     {
         /* Copy and overwrite file descriptor */
-        dup2(pipes[WRITE], WRITE);
+        if (dup2(pipes[WRITE], WRITE) < 0)
+        {
+            perror("Failed to duplicate file descriptor for writing");
+            return 0;
+        }
 
         /* Delete file descriptors */
         if (close(pipes[WRITE]))
@@ -121,7 +125,11 @@ int check_env(const char* input, int i)
     else if (pid_grep == 0)
     {
         /* Copy and overwrite file descriptor */
-        dup2(pipes[READ], READ);
+        if (dup2(pipes[READ], READ) < 0)
+        {
+            perror("Failed to duplicate file descriptor for reading");
+            return 0;
+        }
 
         /* Delete file descriptors */
         if (close(pipes[WRITE]))
