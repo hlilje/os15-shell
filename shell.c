@@ -67,13 +67,13 @@ int check_env(const char* input, int i)
     char* pager = getenv("PAGER");
 
     pid_t pid_printenv, pid_grep;
-	int pipes[2], status;
+	int pipes1[2], pipes2[2], pipes3[2], status, j;
 	char* args[80];
 	char cmd[80];
-	int j = 1;
 
     /* First argument must be file name */
 	args[0] = "grep";
+	j = 1;
 	/* Read arguments to grep */
 	while (input[i] != '\0')
     {
@@ -89,7 +89,7 @@ int check_env(const char* input, int i)
     printf("First argument: %s\n", args[1]);
 
 	/* Get file descriptors */
-	if (pipe(pipes))
+	if (pipe(pipes1))
     {
         perror("Failed to create pipe for printenv");
         return 0;
@@ -107,19 +107,19 @@ int check_env(const char* input, int i)
     else if (pid_printenv == 0)
     {
         /* Copy and overwrite file descriptor */
-        if (dup2(pipes[WRITE], WRITE) < 0)
+        if (dup2(pipes1[WRITE], WRITE) < 0)
         {
             perror("Failed to duplicate file descriptor for writing");
             return 0;
         }
 
         /* Delete file descriptors */
-        if (close(pipes[WRITE]))
+        if (close(pipes1[WRITE]))
         {
             perror("Failed to delete file descriptor");
             return 0;
         }
-        if (close(pipes[READ]))
+        if (close(pipes1[READ]))
         {
             perror("Failed to delete file descriptor");
             return 0;
@@ -148,19 +148,19 @@ int check_env(const char* input, int i)
         else if (pid_grep == 0)
         {
             /* Copy and overwrite file descriptor */
-            if (dup2(pipes[READ], READ) < 0)
+            if (dup2(pipes1[READ], READ) < 0)
             {
                 perror("Failed to duplicate file descriptor for reading");
                 return 0;
             }
 
             /* Delete file descriptors */
-            if (close(pipes[WRITE]))
+            if (close(pipes1[WRITE]))
             {
                 perror("Failed to delete file descriptor");
                 return 0;
             }
-            if (close(pipes[READ]))
+            if (close(pipes1[READ]))
             {
                 perror("Failed to delete file descriptor");
                 return 0;
