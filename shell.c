@@ -70,8 +70,10 @@ int check_env(const char* input, int i)
 	int pipes[2], status;
 	char* args[80];
 	char cmd[80];
-	int j = 0;
+	int j = 1;
 
+    /* First argument must be file name */
+	args[0] = "grep";
 	/* Read arguments to grep */
 	while (input[i] != '\0')
     {
@@ -80,7 +82,11 @@ int check_env(const char* input, int i)
         ++j;
     }
 
-    printf("%s\n", args[1]);
+    /* Argument list is NULL terminated */
+    args[j] = (char*) NULL;
+
+    /* DEBUG */
+    printf("First argument: %s\n", args[1]);
 
 	/* Get file descriptors */
 	if (pipe(pipes))
@@ -127,40 +133,45 @@ int check_env(const char* input, int i)
         }
     }
 
-    /* Create new grep process */
-    pid_grep = fork();
-    if (pid_grep < 0)
+    /* Create new grep process if arguments were given */
+    if (args[1] != NULL)
     {
-        perror("Failed to create pipe for grep");
-        return 0;
-    }
-    /* Child process */
-    else if (pid_grep == 0)
-    {
-        /* Copy and overwrite file descriptor */
-        if (dup2(pipes[READ], READ) < 0)
-        {
-            perror("Failed to duplicate file descriptor for reading");
-            return 0;
-        }
+        printf("execute grep\n");
 
-        /* Delete file descriptors */
-        if (close(pipes[WRITE]))
+        pid_grep = fork();
+        if (pid_grep < 0)
         {
-            perror("Failed to delete file descriptor");
+            perror("Failed to create pipe for grep");
             return 0;
         }
-        if (close(pipes[READ]))
+        /* Child process */
+        else if (pid_grep == 0)
         {
-            perror("Failed to delete file descriptor");
-            return 0;
-        }
+            /* Copy and overwrite file descriptor */
+            if (dup2(pipes[READ], READ) < 0)
+            {
+                perror("Failed to duplicate file descriptor for reading");
+                return 0;
+            }
 
-        /* Execute grep via path */
-        if (execlp("grep", "grep", NULL))
-        {
-            perror("Failed to execute grep");
-            return 0;
+            /* Delete file descriptors */
+            if (close(pipes[WRITE]))
+            {
+                perror("Failed to delete file descriptor");
+                return 0;
+            }
+            if (close(pipes[READ]))
+            {
+                perror("Failed to delete file descriptor");
+                return 0;
+            }
+
+            /* Execute grep via path using given arguments */
+            if (execvp("grep", args))
+            {
+                perror("Failed to execute grep");
+                return 0;
+            }
         }
     }
 
