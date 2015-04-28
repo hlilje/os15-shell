@@ -68,6 +68,19 @@ int check_env(const char* input, int i)
 
     pid_t pid_printenv, pid_grep;
 	int pipes[2], status;
+	char* args[80];
+	char cmd[80];
+	int j = 0;
+
+	/* Read arguments to grep */
+	while (input[i] != '\0')
+    {
+        i = read_cmd(cmd, input, i);
+        args[j] = cmd;
+        ++j;
+    }
+
+    printf("%s\n", args[1]);
 
 	/* Get file descriptors */
 	if (pipe(pipes))
