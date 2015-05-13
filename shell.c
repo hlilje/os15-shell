@@ -69,6 +69,8 @@ int pipe_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
 
 	printf("Execute command %s\n", cmd);
 
+	printf("File descriptors %d, %d, %d, %d\n", fds[0], fds[1], fds[2], fds[3]);
+
 	if (args == NULL) printf("No args for grep\n");
 
     /* Pipe and get file descriptors */
