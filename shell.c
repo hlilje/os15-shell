@@ -61,21 +61,88 @@ int cd(const char* input, char* cmd, int i)
     return 1;
 }
 
+int pipe_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args)
+{
+    pid_t pid;
+
+	printf("pipe_exec_cmd %s: \n", cmd);
+	if (args == NULL) printf("no args\n");
+
+    /* Get file descriptors */
+    if (pipe(pipes))
+    {
+        perror("Failed to create pipe");
+        return 0;
+    }
+
+    /* Create new process */
+    pid = fork();
+
+    if (pid < 0)
+    {
+        perror("Failed to fork");
+        return 0;
+    }
+    /* Child process */
+    else if (pid == 0)
+    {
+        printf("CHILD\n");
+        /* Copy and overwrite file descriptor */
+        if (dup2(pipes[fds[0]], fds[1]) < 0)
+        {
+            perror("Failed to duplicate file descriptor for writing");
+            return 0;
+        }
+        printf("CHILD AGAIN\n");
+
+        /* Delete file descriptors */
+        if (close(pipes[fds[0]]))
+        {
+            perror("Failed to delete file descriptor");
+            return 0;
+        }
+        if (close(pipes[fds[1]]))
+        {
+            perror("Failed to delete file descriptor");
+            return 0;
+        }
+
+        /* Execute command with arguments via path */
+        if (args != NULL)
+        {
+            printf("EXEC CHILD\n");
+            if (execvp("grep", args))
+            {
+                perror("Failed to execute command");
+                return 0;
+            }
+        }
+        /* Execute command without arguments via path */
+        else
+        {
+            printf("EXEC CHILD\n");
+            if (execlp(cmd, cmd, NULL))
+            {
+                perror("Failed to execute command");
+                return 0;
+            }
+        }
+    }
+
+    return 1;
+}
+
 int check_env(const char* input, int i)
 {
-    char checkenv[128], checkenvtmp[128];
-    char* pager = getenv("PAGER");
-
-    pid_t pid_printenv, pid_grep;
-	int pipes1[2], pipes2[2], pipes3[2], status, j;
+	int pipes[2], fds[2], status, j, k;
+	int num_processes = 3;
 	char* args[80];
+    char* pager = getenv("PAGER");
 	char cmd[80];
 
-    /* First argument must be file name */
-	args[0] = "grep";
-	j = 1;
-	/* Read arguments to grep */
-	while (input[i] != '\0')
+    j = 1;
+    /* Read arguments to grep */
+    while (input[i] != '\0')
     {
         i = read_cmd(cmd, input, i);
         args[j] = cmd;
@@ -85,143 +152,73 @@ int check_env(const char* input, int i)
     /* Argument list is NULL terminated */
     args[j] = (char*) NULL;
 
+    /* First argument must be file name */
+    args[0] = cmd;
+
     /* DEBUG */
     printf("First argument: %s\n", args[1]);
 
-	/* Get file descriptors */
-	if (pipe(pipes1))
+    /* Pipe and execute printenv */
+    fds[0] = WRITE;
+    fds[1] = WRITE;
+    if(!pipe_exec_cmd("printenv", pipes, fds, NULL))
     {
-        perror("Failed to create pipe for printenv");
+        perror("Failed to execute printenv");
         return 0;
     }
 
-    /* Create new printenv process */
-    pid_printenv = fork();
-
-    if (pid_printenv < 0)
+    /* Only pipe and excute grep if arguments were given */
+    fds[0] = READ;
+    fds[1] = READ;
+    if (j > 1)
     {
-        perror("Failed to fork for printenv");
-        return 0;
-    }
-    /* Child process */
-    else if (pid_printenv == 0)
-    {
-        /* Copy and overwrite file descriptor */
-        if (dup2(pipes1[WRITE], WRITE) < 0)
+        num_processes = 4;
+        if (!pipe_exec_cmd("grep", pipes, fds, args))
         {
-            perror("Failed to duplicate file descriptor for writing");
-            return 0;
-        }
-
-        /* Delete file descriptors */
-        if (close(pipes1[WRITE]))
-        {
-            perror("Failed to delete file descriptor");
-            return 0;
-        }
-        if (close(pipes1[READ]))
-        {
-            perror("Failed to delete file descriptor");
-            return 0;
-        }
-
-        /* Execute printenv via path */
-        if (execlp("printenv", "printenv", NULL))
-        {
-            perror("Failed to execute printenv");
+            perror("Failed to to execute grep");
             return 0;
         }
     }
 
-    /* Create new grep process if arguments were given */
-    if (args[1] != NULL)
+    /* Pipe and execute sort */
+    if (!pipe_exec_cmd("sort", pipes, fds, NULL))
     {
-        printf("execute grep\n");
-
-        pid_grep = fork();
-        if (pid_grep < 0)
-        {
-            perror("Failed to create pipe for grep");
-            return 0;
-        }
-        /* Child process */
-        else if (pid_grep == 0)
-        {
-            /* Copy and overwrite file descriptor */
-            if (dup2(pipes1[READ], READ) < 0)
-            {
-                perror("Failed to duplicate file descriptor for reading");
-                return 0;
-            }
-
-            /* Delete file descriptors */
-            if (close(pipes1[WRITE]))
-            {
-                perror("Failed to delete file descriptor");
-                return 0;
-            }
-            if (close(pipes1[READ]))
-            {
-                perror("Failed to delete file descriptor");
-                return 0;
-            }
-
-            /* Execute grep via path using given arguments */
-            if (execvp("grep", args))
-            {
-                perror("Failed to execute grep");
-                return 0;
-            }
-        }
-    }
-
-    /* Wait for the processes to finish */
-    if (wait(&status) < 0)
-    {
-        perror("Failed to wait for first process");
-        return 0;
-    }
-    if (wait(&status) < 0)
-    {
-        perror("Failed to wait for second process");
+        perror("Failed to to execute sort");
         return 0;
     }
 
-	/* TODO */
-	return 1;
-
-    strcpy(checkenv, "printenv");
-    /* Get all given arguments */
-    if (input[i] != '\0')
-    {
-        strcat(checkenv, " | grep ");
-        strcat(checkenv, &input[i]);
-    }
-    strcat(checkenv, " | sort | ");
-
-    /* Try to execute with PAGER environment variable */
+    /* Try to pipe and execute with PAGER environment variable */
+    fds[0] = WRITE;
+    fds[1] = WRITE;
     if (pager)
     {
-        strcat(checkenv, pager);
-        if (system(checkenv))
+        if (!pipe_exec_cmd(pager, pipes, fds, NULL))
         {
             perror("Failed to to execute checkEnv with environment pager");
             return 0;
         }
     }
-    /* Try to execute with pager `less`, then `more` */
+    /* Try to pipe and execute with pager `less`, then `more` */
     else
     {
-        strcpy(checkenvtmp, checkenv);
-        strcat(checkenv, "less");
-        if (system(checkenv))
+        if (!pipe_exec_cmd("less", pipes, fds, NULL))
         {
-            strcat(checkenvtmp, "more");
-            if (system(checkenvtmp))
+            if (!pipe_exec_cmd("more", pipes, fds, NULL))
             {
                 perror("Failed to to execute checkEnv with default pagers");
                 return 0;
             }
+        }
+    }
+
+    /* Wait for all processes. */
+    for (k = 0; k < num_processes; ++k)
+    {
+        /* Wait for the processes to finish */
+        if (wait(&status) < 0)
+        {
+            perror("Failed to wait for process");
+            return 0;
         }
     }
 

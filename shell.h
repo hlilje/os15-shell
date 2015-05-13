@@ -33,6 +33,13 @@ int exit_shell();
 int cd(const char* input, char* cmd, int i);
 
 /**
+ * Pipe and execute the given command.
+ * If args is NULL, then no arguments will be given to the command.
+ * Return 0 upon failure and 1 upon success.
+ */
+int pipe_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args);
+
+/**
  * Check environment variables
  * Return 0 upon failure and 1 upon success.
  */
