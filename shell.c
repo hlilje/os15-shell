@@ -63,17 +63,19 @@ int cd(const char* input, char* cmd, int i)
 
 int check_env(const char* input, int i)
 {
+    /* TODO Remove */
     char checkenv[128], checkenvtmp[128];
     char* pager = getenv("PAGER");
 
-    pid_t pid_printenv, pid_grep;
-	int pipes1[2], pipes2[2], pipes3[2], status, j;
+    pid_t pid_printenv, pid_grep, pid_sort, pid_pager;
+	int pipes1[2], pipes2[2], pipes3[2], status, j, do_grep;
 	char* args[80];
 	char cmd[80];
 
     /* First argument must be file name */
 	args[0] = "grep";
 	j = 1;
+	do_grep = 0;
 	/* Read arguments to grep */
 	while (input[i] != '\0')
     {
@@ -85,13 +87,20 @@ int check_env(const char* input, int i)
     /* Argument list is NULL terminated */
     args[j] = (char*) NULL;
 
-    /* DEBUG */
-    printf("First argument: %s\n", args[1]);
-
 	/* Get file descriptors */
 	if (pipe(pipes1))
     {
-        perror("Failed to create pipe for printenv");
+        perror("Failed to create pipe for printenv -> grep");
+        return 0;
+    }
+	if (pipe(pipes2))
+    {
+        perror("Failed to create pipe for -> sort");
+        return 0;
+    }
+	if (pipe(pipes3))
+    {
+        perror("Failed to create pipe for sort -> pager");
         return 0;
     }
 
@@ -136,7 +145,7 @@ int check_env(const char* input, int i)
     /* Create new grep process if arguments were given */
     if (args[1] != NULL)
     {
-        printf("execute grep\n");
+        do_grep = 1;
 
         pid_grep = fork();
         if (pid_grep < 0)
@@ -175,20 +184,64 @@ int check_env(const char* input, int i)
         }
     }
 
+    /* Create new sort process */
+    pid_sort = fork();
+    if (pid_sort < 0)
+    {
+        perror("Failed to create pipe for sort");
+        return 0;
+    }
+    /* Child process */
+    else if (pid_sort == 0)
+    {
+        /* Copy and overwrite file descriptor */
+        if (dup2(pipes2[READ], READ) < 0)
+        {
+            perror("Failed to duplicate file descriptor for reading");
+            return 0;
+        }
+
+        /* Delete file descriptors */
+        if (close(pipes2[WRITE]))
+        {
+            perror("Failed to delete file descriptor");
+            return 0;
+        }
+        if (close(pipes2[READ]))
+        {
+            perror("Failed to delete file descriptor");
+            return 0;
+        }
+
+        /* Execute sort via path */
+        if (execlp("sort", "sort", NULL))
+        {
+            perror("Failed to execute sort");
+            return 0;
+        }
+    }
+
     /* Wait for the processes to finish */
     if (wait(&status) < 0)
     {
         perror("Failed to wait for first process");
         return 0;
     }
-    if (wait(&status) < 0)
+    /* Only wait if grep has been executed */
+    if (do_grep && wait(&status) < 0)
     {
         perror("Failed to wait for second process");
         return 0;
     }
+    if (wait(&status) < 0)
+    {
+        perror("Failed to wait for the third process");
+        return 0;
+    }
 
-	/* TODO */
 	return 1;
+
+	/* TODO Remove */
 
     strcpy(checkenv, "printenv");
     /* Get all given arguments */
