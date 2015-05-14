@@ -144,7 +144,7 @@ int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
         if (args != NULL)
         {
             printf("CHILD: Execute command with args\n");
-            if (execvp("grep", args))
+            if (execvp(cmd, args))
             {
                 perror("Failed to execute command");
                 return 0;
