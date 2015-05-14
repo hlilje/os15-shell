@@ -35,7 +35,8 @@ int cd(const char* input, char* cmd, int i);
 /**
  * Pipe and execute the given command.
  * If args is NULL, then no arguments will be given to the command.
- * File descriptors pairs in fds equalling -1 are not duped.
+ * File descriptors pairs in fds equalling -1 are not duped, the
+ * first pair is for reading and the second for writing.
  * Return 0 upon failure and 1 upon success.
  */
 int pipe_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,

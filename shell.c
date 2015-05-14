@@ -74,6 +74,7 @@ int pipe_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
 	if (args == NULL) printf("No args for grep\n");
 
     /* Pipe and get file descriptors */
+    /* 1st ix = read, 2nd ix = write */
     if (pipe(pipes))
     {
         perror("Failed to create pipe");
@@ -95,7 +96,7 @@ int pipe_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
         /* Copy and overwrite file descriptor if set to do so */
         if (fds[0] != -1 && fds[1] != -1)
         {
-            printf("Dup first fds\n");
+            printf("Dup first %d, %d\n", fds[0], fds[1]);
             if (dup2(pipes[fds[0]], fds[1]) < 0)
             {
                 perror("Failed to duplicate file descriptor for writing");
@@ -104,7 +105,7 @@ int pipe_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
         }
         if (fds[2] != -1 && fds[3] != -1)
         {
-            printf("Dup second fds\n");
+            printf("Dup second %d, %d\n", fds[2], fds[3]);
             if (dup2(pipes[fds[2]], fds[3]) < 0)
             {
                 perror("Failed to duplicate file descriptor for writing");
@@ -174,6 +175,7 @@ int check_env(const char* input, int i)
     /* If arguments were give, one pipe is needed for grep */
     if (j > 1) num_pipes = 4;
 
+
     /* Argument list to execvp is NULL terminated */
     args[j] = (char*) NULL;
 
@@ -182,12 +184,26 @@ int check_env(const char* input, int i)
 
     printf("First argument: %s\n", args[1]);
 
+    /* pipe fds: (0, 1) [2, 3, 4, 5, 6, 7, 8, 9] */
+
+    /* PIPE READ WRITE */
+    /* 1    2    3     */
+    /* 2    4    5     */
+    /* 3    6    7     */
+    /* 4    8    9     */
+
+    /* PROC READ WRITE */
+    /* 1    0    3     */
+    /* 2    2    5     */
+    /* 3    4    7     */
+    /* 4    6    1     */
+
     /* Pipe and execute printenv */
     p = 0;
-    fds[0] = 1;
-    fds[1] = WRITE;
-    fds[2] = -1;
-    fds[3] = -1;
+    fds[0] = -1;
+    fds[1] = -1;
+    fds[2] = 1;
+    fds[3] = WRITE;
     if(!pipe_exec_cmd("printenv", pipes + p, fds, NULL, num_pipes))
     {
         perror("Failed to execute printenv");
@@ -196,10 +212,10 @@ int check_env(const char* input, int i)
 
     /* Only pipe and excute grep if arguments were given */
     p += 2;
-    fds[0] = 3;
-    fds[1] = WRITE;
-    fds[2] = 0;
-    fds[3] = READ;
+    fds[0] = 0;
+    fds[1] = READ;
+    fds[2] = 3;
+    fds[3] = WRITE;
     if (num_pipes == 4)
     {
         if (!pipe_exec_cmd("grep", pipes + p, fds, args, num_pipes))
@@ -213,10 +229,10 @@ int check_env(const char* input, int i)
     if (num_pipes == 4)
     {
         p += 2;
-        fds[0] = 5;
-        fds[1] = WRITE;
-        fds[2] = 2;
-        fds[3] = READ;
+        fds[0] = 2;
+        fds[1] = READ;
+        fds[2] = 5;
+        fds[3] = WRITE;
     }
     if (!pipe_exec_cmd("sort", pipes + p, fds, NULL, num_pipes))
     {
@@ -226,10 +242,10 @@ int check_env(const char* input, int i)
 
     /* Try to pipe and execute with PAGER environment variable */
     p += 2;
-    fds[0] = -1;
-    fds[1] = -1;
-    fds[2] = (num_pipes == 4) ? 4 : 2;
-    fds[3] = READ;
+    fds[0] = (num_pipes == 4) ? 4 : 2;
+    fds[1] = READ;
+    fds[2] = WRITE;
+    fds[3] = WRITE;
     if (pager)
     {
         if (!pipe_exec_cmd(pager, pipes + p, fds, NULL, num_pipes))
@@ -264,8 +280,7 @@ int check_env(const char* input, int i)
     }
 
     /* Let the parent processes wait for all children */
-    /* TODO Why +1? */
-    for (j = 0; j < num_pipes + 1; ++j)
+    for (j = 0; j < num_pipes; ++j)
     {
         printf("Wait for process %d\n", pipes[j]);
         /* Wait for the processes to finish */
