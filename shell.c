@@ -157,9 +157,10 @@ int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
             /* Special case to try more if less fails */
             if (try_less_more)
             {
-                if (!execlp("less", cmd, NULL))
+                if (execlp("less", cmd, NULL))
                 {
-                    if (!execlp("more", cmd, NULL))
+                    printf("CHILD: Failed to execute less\n");
+                    if (execlp("more", cmd, NULL))
                     {
                         perror("Failed to execute command");
                         return 0;
@@ -286,15 +287,11 @@ int check_env(const char* input, int i)
     /* Try to pipe and execute with pager `less`, then `more` */
     else
     {
-        printf("Trying to use less\n");
-        if (!fork_exec_cmd("less", pipes, fds, NULL, num_pipes, 1))
+        printf("Trying to use less or more\n");
+        if (!fork_exec_cmd("more", pipes, fds, NULL, num_pipes, 1))
         {
-            printf("Trying to use more\n");
-            if (!fork_exec_cmd("more", pipes, fds, NULL, num_pipes, 1))
-            {
-                perror("Failed to to execute checkEnv with default pagers");
-                return 0;
-            }
+            perror("Failed to to execute checkEnv with default pagers");
+            return 0;
         }
     }
 
