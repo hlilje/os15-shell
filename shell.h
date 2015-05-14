@@ -43,11 +43,12 @@ int create_pipes(int* pipes, const int num_pipes);
  * If args is NULL, then no arguments will be given to the command.
  * File descriptors pairs in fds equalling -1 are not duped, the
  * first pair is for reading and the second for writing.
- * If endpoint = 1, then no pipe will be created.
+ * If try_less_more = 1, cmd is assumed to be less and more will be executed
+ * if less fails.
  * Return 0 upon failure and 1 upon success.
  */
 int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
-        const int num_pipes);
+        const int num_pipes, const int try_less_more);
 
 /**
  * Check environment variables

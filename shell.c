@@ -81,7 +81,7 @@ int create_pipes(int* pipes, const int num_pipes)
 }
 
 int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
-        const int num_pipes)
+        const int num_pipes, const int try_less_more)
 {
     pid_t pid;
     int i;
@@ -154,10 +154,25 @@ int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
         else
         {
             printf("CHILD: Execute command w/o args\n");
-            if (execlp(cmd, cmd, NULL))
+            /* Special case to try more if less fails */
+            if (try_less_more)
             {
-                perror("Failed to execute command");
-                return 0;
+                if (!execlp("less", cmd, NULL))
+                {
+                    if (!execlp("more", cmd, NULL))
+                    {
+                        perror("Failed to execute command");
+                        return 0;
+                    }
+                }
+            }
+            else
+            {
+                if (execlp(cmd, cmd, NULL))
+                {
+                    perror("Failed to execute command");
+                    return 0;
+                }
             }
         }
     }
@@ -220,7 +235,7 @@ int check_env(const char* input, int i)
     fds[1] = -1;
     fds[2] = 1;
     fds[3] = WRITE;
-    if(!fork_exec_cmd("printenv", pipes, fds, NULL, num_pipes))
+    if(!fork_exec_cmd("printenv", pipes, fds, NULL, num_pipes, 0))
     {
         perror("Failed to execute printenv");
         return 0;
@@ -233,7 +248,7 @@ int check_env(const char* input, int i)
     fds[3] = WRITE;
     if (num_pipes == 3)
     {
-        if (!fork_exec_cmd("grep", pipes, fds, args, num_pipes))
+        if (!fork_exec_cmd("grep", pipes, fds, args, num_pipes, 0))
         {
             perror("Failed to to execute grep");
             return 0;
@@ -248,7 +263,7 @@ int check_env(const char* input, int i)
         fds[2] = 5;
         fds[3] = WRITE;
     }
-    if (!fork_exec_cmd("sort", pipes, fds, NULL, num_pipes))
+    if (!fork_exec_cmd("sort", pipes, fds, NULL, num_pipes, 0))
     {
         perror("Failed to to execute sort");
         return 0;
@@ -262,21 +277,20 @@ int check_env(const char* input, int i)
     if (pager)
     {
         printf("Trying to use PAGER\n");
-        if (!fork_exec_cmd(pager, pipes, fds, NULL, num_pipes))
+        if (!fork_exec_cmd(pager, pipes, fds, NULL, num_pipes, 0))
         {
             perror("Failed to to execute checkEnv with environment pager");
             return 0;
         }
     }
     /* Try to pipe and execute with pager `less`, then `more` */
-    /* TODO This might need more special care */
     else
     {
         printf("Trying to use less\n");
-        if (!fork_exec_cmd("less", pipes, fds, NULL, num_pipes))
+        if (!fork_exec_cmd("less", pipes, fds, NULL, num_pipes, 1))
         {
             printf("Trying to use more\n");
-            if (!fork_exec_cmd("more", pipes, fds, NULL, num_pipes))
+            if (!fork_exec_cmd("more", pipes, fds, NULL, num_pipes, 1))
             {
                 perror("Failed to to execute checkEnv with default pagers");
                 return 0;
