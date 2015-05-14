@@ -62,23 +62,32 @@ int cd(const char* input, char* cmd, int i)
 }
 
 int pipe_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
-        int num_pipes)
+        const int num_pipes, const int endpoint)
 {
     pid_t pid;
     int i;
 
-	printf("Execute command %s\n", cmd);
-
-	printf("File descriptors %d, %d, %d, %d\n", fds[0], fds[1], fds[2], fds[3]);
-
-	if (args == NULL) printf("No args for grep\n");
+    if (args == NULL)
+    {
+        printf("Execute command %s with fds %d, %d, %d, %d (no args)\n",
+                cmd, fds[0], fds[1], fds[2], fds[3]);
+    }
+    else
+    {
+        printf("Execute command %s with fds %d, %d, %d, %d (args)\n", cmd,
+                fds[0], fds[1], fds[2], fds[3]);
+    }
 
     /* Pipe and get file descriptors */
     /* 1st ix = read, 2nd ix = write */
-    if (pipe(pipes))
+    /* Don't pipe if it's the endpoint */
+    if (!endpoint)
     {
-        perror("Failed to create pipe");
-        return 0;
+        if (pipe(pipes))
+        {
+            perror("Failed to create pipe");
+            return 0;
+        }
     }
 
     /* Fork to create new process */
@@ -92,11 +101,11 @@ int pipe_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
     /* Child process goes here, parent just returns */
     else if (pid == 0)
     {
-        printf("Now executing in child process\n");
+        printf("CHILD: Now executing in child process\n");
         /* Copy and overwrite file descriptor if set to do so */
         if (fds[0] != -1 && fds[1] != -1)
         {
-            printf("Dup first %d, %d\n", fds[0], fds[1]);
+            printf("CHILD: Dup first %d, %d\n", fds[0], fds[1]);
             if (dup2(pipes[fds[0]], fds[1]) < 0)
             {
                 perror("Failed to duplicate file descriptor for writing");
@@ -105,7 +114,7 @@ int pipe_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
         }
         if (fds[2] != -1 && fds[3] != -1)
         {
-            printf("Dup second %d, %d\n", fds[2], fds[3]);
+            printf("CHILD: Dup second %d, %d\n", fds[2], fds[3]);
             if (dup2(pipes[fds[2]], fds[3]) < 0)
             {
                 perror("Failed to duplicate file descriptor for writing");
@@ -116,6 +125,7 @@ int pipe_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
         /* Delete all file descriptors for the child process */
         for (i = 0; i < num_pipes * 2; ++i)
         {
+            printf("CHILD: Now closing %i\n", pipes[i]);
             if (close(pipes[i]))
             {
                 perror("Failed to delete file descriptor");
@@ -126,7 +136,7 @@ int pipe_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
         /* Execute command with arguments via path */
         if (args != NULL)
         {
-            printf("Execute command with args\n");
+            printf("CHILD: Execute command with args\n");
             if (execvp("grep", args))
             {
                 perror("Failed to execute command");
@@ -136,7 +146,7 @@ int pipe_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
         /* Execute command without arguments via path */
         else
         {
-            printf("Execute command w/o args\n");
+            printf("CHILD: Execute command w/o args\n");
             if (execlp(cmd, cmd, NULL))
             {
                 perror("Failed to execute command");
@@ -145,24 +155,24 @@ int pipe_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
         }
     }
 
-    printf("Now exiting in parent process\n");
+    printf("PARENT: Now exiting pipe_exec_cmd\n");
 
     return 1;
 }
 
 int check_env(const char* input, int i)
 {
-	int pipes[8];                   /* File descriptors from piping */
-	int fds[4];                     /* File descriptors to dupe */
-	int status;                     /* Wait status */
-	int j = 1;                      /* Loop index */
-	int num_pipes = 3;              /* Number of pipes to create */
-	int p;                          /* Offset in pipe array when piping */
-	char* args[80];                 /* All arguments to grep */
+    int pipes[6];                   /* File descriptors from piping */
+    int fds[4];                     /* File descriptors to dupe */
+    int status;                     /* Wait status */
+    int j = 1;                      /* Loop index */
+    int num_pipes = 2;              /* Number of pipes to create */
+    int p;                          /* Offset in pipe array when piping */
+    char* args[80];                 /* All arguments to grep */
     char* pager = getenv("PAGER");  /* PAGER enviroment variable */
-	char cmd[80];                   /* One grep parameter */
+    char cmd[80];                   /* One grep parameter */
 
-	printf("Number of pipes: %i\n", num_pipes);
+    printf("Number of pipes: %i\n", num_pipes);
 
     /* Read arguments to grep */
     while (input[i] != '\0')
@@ -173,8 +183,7 @@ int check_env(const char* input, int i)
     }
 
     /* If arguments were give, one pipe is needed for grep */
-    if (j > 1) num_pipes = 4;
-
+    if (j > 1) num_pipes = 3;
 
     /* Argument list to execvp is NULL terminated */
     args[j] = (char*) NULL;
@@ -184,13 +193,12 @@ int check_env(const char* input, int i)
 
     printf("First argument: %s\n", args[1]);
 
-    /* pipe fds: (0, 1) [2, 3, 4, 5, 6, 7, 8, 9] */
+    /* pipe fds: (0, 1) [2, 3, 4, 5, 6, 7] */
 
     /* PIPE READ WRITE */
     /* 1    2    3     */
     /* 2    4    5     */
     /* 3    6    7     */
-    /* 4    8    9     */
 
     /* PROC READ WRITE */
     /* 1    0    3     */
@@ -204,7 +212,7 @@ int check_env(const char* input, int i)
     fds[1] = -1;
     fds[2] = 1;
     fds[3] = WRITE;
-    if(!pipe_exec_cmd("printenv", pipes + p, fds, NULL, num_pipes))
+    if(!pipe_exec_cmd("printenv", pipes + p, fds, NULL, num_pipes, 0))
     {
         perror("Failed to execute printenv");
         return 0;
@@ -218,7 +226,7 @@ int check_env(const char* input, int i)
     fds[3] = WRITE;
     if (num_pipes == 4)
     {
-        if (!pipe_exec_cmd("grep", pipes + p, fds, args, num_pipes))
+        if (!pipe_exec_cmd("grep", pipes + p, fds, args, num_pipes, 0))
         {
             perror("Failed to to execute grep");
             return 0;
@@ -234,7 +242,7 @@ int check_env(const char* input, int i)
         fds[2] = 5;
         fds[3] = WRITE;
     }
-    if (!pipe_exec_cmd("sort", pipes + p, fds, NULL, num_pipes))
+    if (!pipe_exec_cmd("sort", pipes + p, fds, NULL, num_pipes, 0))
     {
         perror("Failed to to execute sort");
         return 0;
@@ -248,7 +256,7 @@ int check_env(const char* input, int i)
     fds[3] = WRITE;
     if (pager)
     {
-        if (!pipe_exec_cmd(pager, pipes + p, fds, NULL, num_pipes))
+        if (!pipe_exec_cmd(pager, pipes + p, fds, NULL, num_pipes, 1))
         {
             perror("Failed to to execute checkEnv with environment pager");
             return 0;
@@ -258,9 +266,9 @@ int check_env(const char* input, int i)
     /* TODO This might need more special care */
     else
     {
-        if (!pipe_exec_cmd("less", pipes + p, fds, NULL, num_pipes))
+        if (!pipe_exec_cmd("less", pipes + p, fds, NULL, num_pipes, 1))
         {
-            if (!pipe_exec_cmd("more", pipes + p, fds, NULL, num_pipes))
+            if (!pipe_exec_cmd("more", pipes + p, fds, NULL, num_pipes, 1))
             {
                 perror("Failed to to execute checkEnv with default pagers");
                 return 0;
@@ -271,7 +279,7 @@ int check_env(const char* input, int i)
     /* Let the parent processes close all pipes */
     for (j = 0; j < num_pipes * 2; ++j)
     {
-        printf("Close pid %d\n", pipes[j]);
+        printf("PARENT: Now closing %d\n", pipes[j]);
         if (close(pipes[j]))
         {
             perror("Failed to delete file descriptor");
@@ -280,9 +288,9 @@ int check_env(const char* input, int i)
     }
 
     /* Let the parent processes wait for all children */
-    for (j = 0; j < num_pipes; ++j)
+    for (j = 0; j < num_pipes + 1; ++j)
     {
-        printf("Wait for process %d\n", pipes[j]);
+        printf("PARENT: Wait for process %d\n", pipes[j]);
         /* Wait for the processes to finish */
         if (wait(&status) < 0)
         {
