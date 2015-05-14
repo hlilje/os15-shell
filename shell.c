@@ -257,8 +257,8 @@ int check_env(const char* input, int i)
     /* Try to pipe and execute with PAGER environment variable */
     fds[0] = (num_pipes == 4) ? 4 : 2;
     fds[1] = READ;
-    fds[2] = WRITE;
-    fds[3] = WRITE;
+    fds[2] = -1;
+    fds[3] = -1;
     if (pager)
     {
         if (!fork_exec_cmd(pager, pipes, fds, NULL, num_pipes))
@@ -295,7 +295,7 @@ int check_env(const char* input, int i)
     /* Let the parent processes wait for all children */
     for (j = 0; j < num_pipes + 1; ++j)
     {
-        printf("PARENT: Wait for process %d\n", pipes[j]);
+        printf("PARENT: Wait for process %d\n", j);
         /* Wait for the processes to finish */
         if (wait(&status) < 0)
         {
