@@ -33,15 +33,21 @@ int exit_shell();
 int cd(const char* input, char* cmd, int i);
 
 /**
- * Pipe and execute the given command.
+ * Create the given number of pipes.
+ * Return 0 upon failure and 1 upon success.
+ */
+int create_pipes(int* pipes, const int num_pipes);
+
+/**
+ * Fork and execute the given command.
  * If args is NULL, then no arguments will be given to the command.
  * File descriptors pairs in fds equalling -1 are not duped, the
  * first pair is for reading and the second for writing.
  * If endpoint = 1, then no pipe will be created.
  * Return 0 upon failure and 1 upon success.
  */
-int pipe_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
-        const int num_pipes, const int endpoint);
+int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
+        const int num_pipes);
 
 /**
  * Check environment variables

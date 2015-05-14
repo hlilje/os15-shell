@@ -61,8 +61,27 @@ int cd(const char* input, char* cmd, int i)
     return 1;
 }
 
-int pipe_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
-        const int num_pipes, const int endpoint)
+int create_pipes(int* pipes, const int num_pipes)
+{
+    int i, j;
+    /* Pipe and get file descriptors */
+    /* 1st ix = read, 2nd ix = write */
+    /* Don't pipe if it's the endpoint */
+    for (i = 0, j = 0; i < num_pipes * 2; i += 2, ++j)
+    {
+        printf("Creating pipe %d\n", j);
+        if (pipe(pipes + i))
+        {
+            perror("Failed to create pipe");
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
+        const int num_pipes)
 {
     pid_t pid;
     int i;
@@ -76,18 +95,6 @@ int pipe_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
     {
         printf("Execute command %s with fds %d, %d, %d, %d (args)\n", cmd,
                 fds[0], fds[1], fds[2], fds[3]);
-    }
-
-    /* Pipe and get file descriptors */
-    /* 1st ix = read, 2nd ix = write */
-    /* Don't pipe if it's the endpoint */
-    if (!endpoint)
-    {
-        if (pipe(pipes))
-        {
-            perror("Failed to create pipe");
-            return 0;
-        }
     }
 
     /* Fork to create new process */
@@ -155,7 +162,7 @@ int pipe_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
         }
     }
 
-    printf("PARENT: Now exiting pipe_exec_cmd\n");
+    printf("PARENT: Now exiting fork_exec_cmd\n");
 
     return 1;
 }
@@ -185,13 +192,16 @@ int check_env(const char* input, int i)
     /* If arguments were give, one pipe is needed for grep */
     if (j > 1) num_pipes = 3;
 
+    /* Create all pipes beforehand */
+    create_pipes(pipes, num_pipes);
+
     /* Argument list to execvp is NULL terminated */
     args[j] = (char*) NULL;
 
     /* First argument in list must be file name */
     args[0] = cmd;
 
-    printf("First argument: %s\n", args[1]);
+    printf("First grep argument: %s\n", args[1]);
 
     /* pipe fds: (0, 1) [2, 3, 4, 5, 6, 7] */
 
@@ -212,7 +222,7 @@ int check_env(const char* input, int i)
     fds[1] = -1;
     fds[2] = 1;
     fds[3] = WRITE;
-    if(!pipe_exec_cmd("printenv", pipes + p, fds, NULL, num_pipes, 0))
+    if(!fork_exec_cmd("printenv", pipes + p, fds, NULL, num_pipes))
     {
         perror("Failed to execute printenv");
         return 0;
@@ -226,7 +236,7 @@ int check_env(const char* input, int i)
     fds[3] = WRITE;
     if (num_pipes == 4)
     {
-        if (!pipe_exec_cmd("grep", pipes + p, fds, args, num_pipes, 0))
+        if (!fork_exec_cmd("grep", pipes + p, fds, args, num_pipes))
         {
             perror("Failed to to execute grep");
             return 0;
@@ -242,7 +252,7 @@ int check_env(const char* input, int i)
         fds[2] = 5;
         fds[3] = WRITE;
     }
-    if (!pipe_exec_cmd("sort", pipes + p, fds, NULL, num_pipes, 0))
+    if (!fork_exec_cmd("sort", pipes + p, fds, NULL, num_pipes))
     {
         perror("Failed to to execute sort");
         return 0;
@@ -256,7 +266,7 @@ int check_env(const char* input, int i)
     fds[3] = WRITE;
     if (pager)
     {
-        if (!pipe_exec_cmd(pager, pipes + p, fds, NULL, num_pipes, 1))
+        if (!fork_exec_cmd(pager, pipes + p, fds, NULL, num_pipes))
         {
             perror("Failed to to execute checkEnv with environment pager");
             return 0;
@@ -266,9 +276,9 @@ int check_env(const char* input, int i)
     /* TODO This might need more special care */
     else
     {
-        if (!pipe_exec_cmd("less", pipes + p, fds, NULL, num_pipes, 1))
+        if (!fork_exec_cmd("less", pipes + p, fds, NULL, num_pipes))
         {
-            if (!pipe_exec_cmd("more", pipes + p, fds, NULL, num_pipes, 1))
+            if (!fork_exec_cmd("more", pipes + p, fds, NULL, num_pipes))
             {
                 perror("Failed to to execute checkEnv with default pagers");
                 return 0;
