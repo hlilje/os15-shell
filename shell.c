@@ -112,7 +112,7 @@ int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
         /* Copy and overwrite file descriptor if set to do so */
         if (fds[0] != -1 && fds[1] != -1)
         {
-            printf("CHILD: Dup first %d, %d\n", fds[0], fds[1]);
+            printf("CHILD: Dup fds for READ %d, %d\n", fds[0], fds[1]);
             if (dup2(pipes[fds[0]], fds[1]) < 0)
             {
                 perror("Failed to duplicate file descriptor for writing");
@@ -121,7 +121,7 @@ int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
         }
         if (fds[2] != -1 && fds[3] != -1)
         {
-            printf("CHILD: Dup second %d, %d\n", fds[2], fds[3]);
+            printf("CHILD: Dup fds for WRITE %d, %d\n", fds[2], fds[3]);
             if (dup2(pipes[fds[2]], fds[3]) < 0)
             {
                 perror("Failed to duplicate file descriptor for writing");
@@ -174,7 +174,6 @@ int check_env(const char* input, int i)
     int status;                     /* Wait status */
     int j = 1;                      /* Loop index */
     int num_pipes = 2;              /* Number of pipes to create */
-    int p;                          /* Offset in pipe array when piping */
     char* args[80];                 /* All arguments to grep */
     char* pager = getenv("PAGER");  /* PAGER enviroment variable */
     char cmd[80];                   /* One grep parameter */
@@ -217,26 +216,24 @@ int check_env(const char* input, int i)
     /* 4    6    1     */
 
     /* Pipe and execute printenv */
-    p = 0;
     fds[0] = -1;
     fds[1] = -1;
     fds[2] = 1;
     fds[3] = WRITE;
-    if(!fork_exec_cmd("printenv", pipes + p, fds, NULL, num_pipes))
+    if(!fork_exec_cmd("printenv", pipes, fds, NULL, num_pipes))
     {
         perror("Failed to execute printenv");
         return 0;
     }
 
     /* Only pipe and excute grep if arguments were given */
-    p += 2;
     fds[0] = 0;
     fds[1] = READ;
     fds[2] = 3;
     fds[3] = WRITE;
     if (num_pipes == 4)
     {
-        if (!fork_exec_cmd("grep", pipes + p, fds, args, num_pipes))
+        if (!fork_exec_cmd("grep", pipes, fds, args, num_pipes))
         {
             perror("Failed to to execute grep");
             return 0;
@@ -246,27 +243,25 @@ int check_env(const char* input, int i)
     /* Pipe and execute sort */
     if (num_pipes == 4)
     {
-        p += 2;
         fds[0] = 2;
         fds[1] = READ;
         fds[2] = 5;
         fds[3] = WRITE;
     }
-    if (!fork_exec_cmd("sort", pipes + p, fds, NULL, num_pipes))
+    if (!fork_exec_cmd("sort", pipes, fds, NULL, num_pipes))
     {
         perror("Failed to to execute sort");
         return 0;
     }
 
     /* Try to pipe and execute with PAGER environment variable */
-    p += 2;
     fds[0] = (num_pipes == 4) ? 4 : 2;
     fds[1] = READ;
     fds[2] = WRITE;
     fds[3] = WRITE;
     if (pager)
     {
-        if (!fork_exec_cmd(pager, pipes + p, fds, NULL, num_pipes))
+        if (!fork_exec_cmd(pager, pipes, fds, NULL, num_pipes))
         {
             perror("Failed to to execute checkEnv with environment pager");
             return 0;
@@ -276,9 +271,9 @@ int check_env(const char* input, int i)
     /* TODO This might need more special care */
     else
     {
-        if (!fork_exec_cmd("less", pipes + p, fds, NULL, num_pipes))
+        if (!fork_exec_cmd("less", pipes, fds, NULL, num_pipes))
         {
-            if (!fork_exec_cmd("more", pipes + p, fds, NULL, num_pipes))
+            if (!fork_exec_cmd("more", pipes, fds, NULL, num_pipes))
             {
                 perror("Failed to to execute checkEnv with default pagers");
                 return 0;
