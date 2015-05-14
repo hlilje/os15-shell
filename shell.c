@@ -1,6 +1,26 @@
 #include "shell.h"
 
 
+void sig_handler(const int sig)
+{
+    /* Ignore the signal */
+    signal(sig, SIG_IGN);
+}
+
+int print_prompt()
+{
+    char wd[PATH_MAX];
+
+    if (!getcwd(wd, PATH_MAX))
+    {
+        perror("Failed to get current working directory");
+        return 0;
+    }
+    printf("%s", wd);
+    printf(" > ");
+    return 1;
+}
+
 int read_cmd(char* cmd, const char* input, int i)
 {
     /* Read one command */
@@ -21,13 +41,10 @@ int read_cmd(char* cmd, const char* input, int i)
     return i;
 }
 
-int exit_shell()
+void exit_shell()
 {
-    printf("exit\n");
     /* TODO Kill all children */
     exit(0);
-
-    return 1;
 }
 
 int cd(const char* input, char* cmd, int i)
@@ -384,19 +401,16 @@ int general_cmd(char* input)
 
 int main(int argc, const char* argv[])
 {
+    /* Define handler for SIGINT */
+    signal(SIGINT, sig_handler);
+
     while(1)
     {
-        char input[80], cmd[80], wd[PATH_MAX];
+        char input[80], cmd[80];
         int i;
 
         /* Prompt */
-        if (!getcwd(wd, PATH_MAX))
-        {
-            perror("Failed to get current working directory");
-            exit(1);
-        }
-        printf("%s", wd);
-        printf(" > ");
+        if (!print_prompt()) exit(1);
 
         /* Exit if error occurs */
         if (!fgets(input, 80, stdin))
@@ -415,7 +429,7 @@ int main(int argc, const char* argv[])
 
         if (strcmp(cmd, "exit") == 0)
         {
-            if (!exit_shell()) break;
+            exit_shell();
         }
         else if (strcmp(cmd, "cd") == 0)
         {

@@ -3,6 +3,7 @@
 #else
 #include <linux/limits.h>
 #endif
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,6 +14,16 @@
 #define READ  0
 #define WRITE 1
 
+/**
+ * Handle SIGINT.
+ */
+void sig_hhandler(const int sig);
+
+/**
+ * Print the prompt.
+ * Return 0 upon failure and 1 upon success.
+ */
+int print_prompt();
 
 /**
  * Read one command from input into cmd.
@@ -22,9 +33,8 @@ int read_cmd(char* cmd, const char* input, int i);
 
 /**
  * Exit the shell.
- * Return 0 upon failure and 1 upon success.
  */
-int exit_shell();
+void exit_shell();
 
 /**
  * Change directory.
