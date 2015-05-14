@@ -231,7 +231,7 @@ int check_env(const char* input, int i)
     fds[1] = READ;
     fds[2] = 3;
     fds[3] = WRITE;
-    if (num_pipes == 4)
+    if (num_pipes == 3)
     {
         if (!fork_exec_cmd("grep", pipes, fds, args, num_pipes))
         {
@@ -241,7 +241,7 @@ int check_env(const char* input, int i)
     }
 
     /* Pipe and execute sort */
-    if (num_pipes == 4)
+    if (num_pipes == 3)
     {
         fds[0] = 2;
         fds[1] = READ;
@@ -255,7 +255,7 @@ int check_env(const char* input, int i)
     }
 
     /* Try to pipe and execute with PAGER environment variable */
-    fds[0] = (num_pipes == 4) ? 4 : 2;
+    fds[0] = (num_pipes == 3) ? 4 : 2;
     fds[1] = READ;
     fds[2] = -1;
     fds[3] = -1;
