@@ -261,6 +261,7 @@ int check_env(const char* input, int i)
     fds[3] = -1;
     if (pager)
     {
+        printf("Trying to use PAGER\n");
         if (!fork_exec_cmd(pager, pipes, fds, NULL, num_pipes))
         {
             perror("Failed to to execute checkEnv with environment pager");
@@ -271,8 +272,10 @@ int check_env(const char* input, int i)
     /* TODO This might need more special care */
     else
     {
+        printf("Trying to use less\n");
         if (!fork_exec_cmd("less", pipes, fds, NULL, num_pipes))
         {
+            printf("Trying to use more\n");
             if (!fork_exec_cmd("more", pipes, fds, NULL, num_pipes))
             {
                 perror("Failed to to execute checkEnv with default pagers");
