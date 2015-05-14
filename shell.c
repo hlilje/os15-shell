@@ -221,7 +221,7 @@ int check_env(const char* input, int i)
         ++j;
     }
 
-    /* If arguments were give, one pipe is needed for grep */
+    /* If arguments were given, one pipe is needed for grep */
     if (j > 1) num_pipes = 3;
 
     /* Create all pipes beforehand */
@@ -340,17 +340,34 @@ int check_env(const char* input, int i)
 
 int general_cmd(char* input)
 {
-    int i, do_fork;
-    pid_t pid;
+    int background_process;
+    int pipes[2];                   /* File descriptors from piping */
+    int fds[4];                     /* File descriptors to dupe */
+    int num_pipes = 1;              /* Number of pipes to create */
+    pid_t pid;                      /* PID of child */
+    int status_p, status_c;         /* Wait status */
+    char* args[80];                 /* All arguments to the command */
+    char arg[80];                   /* One argument to command */
+    char cmd[80];                   /* The command to be executed */
+    int j = 1;                      /* Loop index */
+    int i;                          /* Command index */
+    time_t time_before;             /* Time before execution of command */
+    time_t time_after;              /* Time after execution of command */
+
+    create_pipes(pipes, num_pipes);
+    fds[0] = -1;
+    fds[1] = -1;
+    fds[2] = -1;
+    fds[3] = -1;
 
     /* Read the entire command string */
-    do_fork = 0;
+    background_process = 0;
     for (i = 0; ; ++i)
     {
         /* Check if the process should run in the background */
         if (input[i] == '&')
         {
-            do_fork = 1;
+            background_process = 1;
             input[i] = '\0';
             break;
         }
@@ -360,41 +377,63 @@ int general_cmd(char* input)
         }
     }
 
-    if (do_fork)
+    /* Read the command */
+    i = read_cmd(cmd, input, 0);
+    /* First argument in list must be file name */
+    args[0] = cmd;
+
+    /* Read arguments to the command */
+    while (input[i] != '\0')
     {
-        pid = fork(); /* Create new child process */
+        i = read_cmd(arg, input, i);
+        args[j] = arg;
+        ++j;
+    }
+    /* Argument list to execvp is NULL terminated */
+    args[j] = (char*) NULL;
 
-        /* Child process */
-        if (pid == 0)
-        {
-            if (system(input))
-            {
-                perror("Failed to execute forked command");
-            }
+    pid = fork(); /* Create new child process that handles execution */
 
-            _exit(0); /* exit() unreliable */
-        }
-        /* Error */
-        else if (pid < 0)
+    /* Child process */
+    if (pid == 0)
+    {
+        time(&time_before);
+        if (!fork_exec_cmd(cmd, pipes, fds, args, num_pipes, 0))
         {
-            perror("Failed to fork child process");
-            exit(1);
+            perror("Failed to execute command");
         }
-        else
+        if (wait(&status_c) < 0)
         {
-            /* The parent process comes here after forking */
-            /* int status; */
-            /* waitpid(pid, &status, 0); */
+            perror("Failed to wait for executing process");
+            return 0;
         }
+        time(&time_after);
+        time_after = time_after - time_before;
+        printf("%s finished executing in %ld seconds\n", cmd, time_after);
+        _exit(0); /* exit() unreliable */
+    }
+    /* Error */
+    else if (pid < 0)
+    {
+        perror("Failed to fork child process");
+        exit(1);
     }
     /* Parent process */
     else
     {
-        if (system(input))
+        /* The parent process comes here after forking */
+        /* int status; */
+        /* waitpid(pid, &status, 0); */
+        if (!background_process)
         {
-            perror("Failed to execute command");
+            if (waitpid(pid, &status_p, 0) < 0)
+            {
+                perror("Failed to wait for process");
+                return 0;
+            }
         }
     }
+
 
     return 1;
 }
