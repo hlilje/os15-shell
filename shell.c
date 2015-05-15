@@ -1,5 +1,11 @@
 #include "shell.h"
 
+#if (SIGDET == 1)
+const static int SIGN_DETECTION = 1;
+#else
+const static int SIGN_DETECTION = 0;
+#endif
+
 
 void sig_handler(const int sig)
 {

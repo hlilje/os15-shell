@@ -3,7 +3,6 @@
 #else
 #include <linux/limits.h>
 #endif
-#define _XOPEN_SOURCE 500
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,6 +11,11 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <time.h>
+
+/* Needed for signals */
+#define _XOPEN_SOURCE 500
+/* Handle background processes by signals */
+#define SIGDET 1
 
 #define READ  0
 #define WRITE 1
