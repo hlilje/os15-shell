@@ -48,6 +48,10 @@ int read_cmd(char* cmd, const char* input, int i)
 void exit_shell()
 {
     /* TODO Kill all children */
+
+    /* Kill all processes of the same group */
+    /* TODO is this enough? */
+    kill(0, SIGKILL);
     exit(0);
 }
 
@@ -454,6 +458,7 @@ int general_cmd(char* input)
 
 int main(int argc, const char* argv[])
 {
+    int status;
     /* Define handler for SIGINT */
     signal(SIGINT, sig_handler);
 
@@ -462,6 +467,9 @@ int main(int argc, const char* argv[])
         char input[80], cmd[80];
         int i;
 
+        /* Wait for all defunct children */
+        /* Continue even if no child has exited */
+        while(waitpid(-1, &status, WNOHANG | WUNTRACED) > 0);
         /* Prompt */
         if (!print_prompt()) continue;
 
