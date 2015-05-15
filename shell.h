@@ -50,6 +50,12 @@ int cd(const char* input, char* cmd, int i);
 int create_pipes(int* pipes, const int num_pipes);
 
 /**
+ * Close the given number of pipes.
+ * Return 0 upon failure and 1 upon success.
+ */
+int close_pipes(int* pipes, const int num_pipes);
+
+/**
  * Fork and execute the given command.
  * If args is NULL, then no arguments will be given to the command.
  * File descriptors pairs in fds equalling -1 are not duped, the

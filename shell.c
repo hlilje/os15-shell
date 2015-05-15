@@ -100,6 +100,22 @@ int create_pipes(int* pipes, const int num_pipes)
     return 1;
 }
 
+int close_pipes(int* pipes, const int num_pipes)
+{
+    int i;
+    for (i = 0; i < num_pipes * 2; ++i)
+    {
+        printf("Now closing %d\n", pipes[i]);
+        if (close(pipes[i]))
+        {
+            perror("Failed to delete file descriptor");
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
         const int num_pipes, const int try_less_more)
 {
@@ -316,15 +332,7 @@ int check_env(const char* input, int i)
     }
 
     /* Let the parent processes close all pipes */
-    for (j = 0; j < num_pipes * 2; ++j)
-    {
-        printf("PARENT: Now closing %d\n", pipes[j]);
-        if (close(pipes[j]))
-        {
-            perror("Failed to delete file descriptor");
-            return 0;
-        }
-    }
+    close_pipes(pipes, num_pipes);
 
     /* Let the parent processes wait for all children */
     for (j = 0; j < num_pipes + 1; ++j)
@@ -439,15 +447,7 @@ int general_cmd(char* input)
     }
 
     /* Let the parent processes close all pipes */
-    for (j = 0; j < num_pipes * 2; ++j)
-    {
-        printf("PARENT: Now closing %d\n", pipes[j]);
-        if (close(pipes[j]))
-        {
-            perror("Failed to delete file descriptor");
-            return 0;
-        }
-    }
+    close_pipes(pipes, num_pipes);
 
     return 1;
 }
