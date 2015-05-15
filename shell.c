@@ -16,6 +16,7 @@ void sig_int_handler(const int sig)
 void sig_bg_handler(const int sig)
 {
     int status;
+    printf("Catch BG signal\n");
     waitpid(-1, &status, WUNTRACED);
 }
 
@@ -422,6 +423,7 @@ const int general_cmd(char* input)
     /* Child process */
     if (pid == 0)
     {
+        /* Measure execution time */
         time(&time_before);
         if (!fork_exec_cmd(cmd, pipes, fds, args, num_pipes, 0))
         {
@@ -436,6 +438,9 @@ const int general_cmd(char* input)
         time(&time_after);
         time_after = time_after - time_before;
         printf("%s finished executing in %ld seconds\n", cmd, time_after);
+
+        /* Notify parent of termination */
+        if (SIGNAL_DETECTION == 1) kill(getppid(), BG_TERM);
         _exit(0); /* exit() unreliable */
     }
     /* Error */
