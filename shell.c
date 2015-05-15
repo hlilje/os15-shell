@@ -22,9 +22,13 @@ int print_prompt()
 }
 
 int read_cmd(char* cmd, const char* input, int i)
-{
-    /* Read one command */
+{    
     int j;
+    /* Discard spaces */
+    while (input[i] == ' ')
+        i++;
+
+    /* Read one command */
     for (j = 0; ; ++i, ++j)
     {
         cmd[j] = input[i];
@@ -400,6 +404,7 @@ int general_cmd(char* input)
         if (!fork_exec_cmd(cmd, pipes, fds, args, num_pipes, 0))
         {
             perror("Failed to execute command");
+            return 0;
         }
         if (wait(&status_c) < 0)
         {
