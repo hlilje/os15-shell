@@ -83,7 +83,6 @@ int create_pipes(int* pipes, const int num_pipes)
     int i, j;
     /* Pipe and get file descriptors */
     /* 1st ix = read, 2nd ix = write */
-    /* Don't pipe if it's the endpoint */
     for (i = 0, j = 0; i < num_pipes * 2; i += 2, ++j)
     {
         printf("Creating pipe %d\n", j);
@@ -477,6 +476,11 @@ int main(int argc, const char* argv[])
         else if (strcmp(cmd, "checkEnv") == 0)
         {
             if (!check_env(input, i)) break;
+        }
+        else if (cmd[0] == '\0')
+        {
+            /* Skip if no command was given */
+            continue;
         }
         else
         {
