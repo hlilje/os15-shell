@@ -1,19 +1,23 @@
 #include "shell.h"
 
 #if (SIGDET == 1)
-const static int SIGN_DETECTION = 1;
+static const int SIGNAL_DETECTION = 1;
 #else
-const static int SIGN_DETECTION = 0;
+static const int SIGNAL_DETECTION = 0;
 #endif
 
 
-void sig_handler(const int sig)
+void sig_int_handler(const int sig)
 {
     /* Ignore the signal */
     signal(sig, SIG_IGN);
 }
 
-int print_prompt()
+void sig_bg_handler(const int sig)
+{
+}
+
+const int print_prompt()
 {
     char wd[PATH_MAX];
 
@@ -27,7 +31,7 @@ int print_prompt()
     return 1;
 }
 
-int read_cmd(char* cmd, const char* input, int i)
+const int read_cmd(char* cmd, const char* input, int i)
 {
     int j;
     /* Discard spaces */
@@ -61,7 +65,7 @@ void exit_shell()
     exit(0);
 }
 
-int cd(const char* input, char* cmd, int i)
+const int cd(const char* input, char* cmd, int i)
 {
     /* Change to home directory */
     if (input[i] == '\0' || input[i] == '~')
@@ -92,7 +96,7 @@ int cd(const char* input, char* cmd, int i)
     return 1;
 }
 
-int create_pipes(int* pipes, const int num_pipes)
+const int create_pipes(int* pipes, const int num_pipes)
 {
     int i, j;
     /* Pipe and get file descriptors */
@@ -110,7 +114,7 @@ int create_pipes(int* pipes, const int num_pipes)
     return 1;
 }
 
-int close_pipes(int* pipes, const int num_pipes)
+const int close_pipes(int* pipes, const int num_pipes)
 {
     int i;
     for (i = 0; i < num_pipes * 2; ++i)
@@ -126,7 +130,7 @@ int close_pipes(int* pipes, const int num_pipes)
     return 1;
 }
 
-int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
+const int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
         const int num_pipes, const int try_less_more)
 {
     pid_t pid;
@@ -229,7 +233,7 @@ int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
     return 1;
 }
 
-int check_env(const char* input, int i)
+const int check_env(const char* input, int i)
 {
     int pipes[6];                   /* File descriptors from piping */
     int fds[4];                     /* File descriptors to dupe */
@@ -359,7 +363,7 @@ int check_env(const char* input, int i)
     return 1;
 }
 
-int general_cmd(char* input)
+const int general_cmd(char* input)
 {
     int background_process;
     int pipes[2];                   /* File descriptors from piping */
@@ -462,11 +466,18 @@ int general_cmd(char* input)
     return 1;
 }
 
-int main(int argc, const char* argv[])
+const int main(int argc, const char* argv[])
 {
     int status;
     /* Define handler for SIGINT */
-    signal(SIGINT, sig_handler);
+    signal(SIGINT, sig_int_handler);
+
+    /* Define hold signal */
+    if (SIGNAL_DETECTION == 1)
+    {
+        sighold(BG_TERM);
+        signal(BG_TERM, sig_bg_handler);
+    }
 
     while(1)
     {
@@ -505,6 +516,9 @@ int main(int argc, const char* argv[])
         else
             general_cmd(input);
     }
+
+    /* Release signal */
+    if (SIGNAL_DETECTION == 1) sigrelse(BG_TERM);
 
     return 0;
 }
