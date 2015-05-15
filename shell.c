@@ -419,7 +419,8 @@ const int general_cmd(char* input, const struct sigaction* act_int_old)
     if (pid == 0)
     {
         /* Restore normal interrupt behaviour */
-        sigaction(SIGINT, act_int_old, NULL);
+        if (sigaction(SIGINT, act_int_old, NULL))
+            perror("Failed to change handler for SIGINT in child");
         /* Measure execution time */
         time(&time_before);
         if (!fork_exec_cmd(cmd, pipes, fds, args, num_pipes, 0))
@@ -471,18 +472,24 @@ const int general_cmd(char* input, const struct sigaction* act_int_old)
 const int main(int argc, const char* argv[])
 {
     int status;
-    struct sigaction act_bg, act_int_old, act_int_new;
+    struct sigaction act_chld, act_int_old, act_int_new;
     /* Define handler for SIGINT (ignore) */
     act_int_new.sa_handler = SIG_IGN;
     act_int_new.sa_flags = 0;
-    sigaction(SIGINT, &act_int_new, &act_int_old);
+    if (sigaction(SIGINT, &act_int_new, &act_int_old))
+        perror("Failed to change handler for SIGINT");
 
     /* Define hold signal */
     if (SIGNAL_DETECTION == 1)
     {
-        sighold(BG_TERM);
-        act_bg.sa_handler = sig_bg_handler;
-        sigaction(BG_TERM, &act_bg, NULL);
+        if (sighold(BG_TERM))
+            perror("Failed to add BG_TERM to signal mask");
+        act_chld.sa_handler = sig_bg_handler;
+        if (sigaction(BG_TERM, &act_chld, NULL))
+            perror("Failed to change handler for background process signal");
+        /*sigaction(SIGCHLD, NULL, &act_chld);
+        act_chld.sa_flags = act_chld.sa_flags | SA_NOCLDWAIT;
+        sigaction(SIGCHLD, &act_chld, NULL);*/
     }
 
     while (1)
@@ -514,7 +521,7 @@ const int main(int argc, const char* argv[])
         i = read_cmd(cmd, input, i);
 
         if (strcmp(cmd, "exit") == 0)
-            exit_shell();
+            break;
         else if (strcmp(cmd, "cd") == 0)
             cd(input, cmd, i);
         else if (strcmp(cmd, "checkEnv") == 0)
@@ -526,7 +533,11 @@ const int main(int argc, const char* argv[])
     }
 
     /* Release signal */
-    if (SIGNAL_DETECTION == 1) sigrelse(BG_TERM);
+    if (SIGNAL_DETECTION == 1)
+        if (sigrelse(BG_TERM))
+            perror("Failed to remove BG_TERM from signal mask");
+
+    exit_shell();
 
     return 0;
 }
