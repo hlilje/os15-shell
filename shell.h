@@ -1,3 +1,12 @@
+/* Needed for signals */
+#define _XOPEN_SOURCE 500
+/* Handle background processes by signals */
+#define SIGDET 1
+
+#define READ  0
+#define WRITE 1
+#define BG_TERM 42
+
 #ifdef __APPLE__
 #include <limits.h>
 #else
@@ -12,22 +21,9 @@
 #include <unistd.h>
 #include <time.h>
 
-/* Needed for signals */
-#define _XOPEN_SOURCE 500
-/* Handle background processes by signals */
-#define SIGDET 1
-
-#define READ  0
-#define WRITE 1
-#define BG_TERM 42
 
 /**
- * Handle SIGINT.
- */
-void sig_int_handler(const int sig);
-
-/**
- * Handle EG_TERM.
+ * Handle BG_TERM.
  */
 void sig_bg_handler(const int sig);
 
@@ -88,4 +84,4 @@ const int check_env(const char* input, int i);
  * Execute arbitrary commands given to the shell.
  * Return 0 upon failure and 1 upon success.
  */
-const int general_cmd(char* input);
+const int general_cmd(char* input, const struct sigaction* act_int_old);

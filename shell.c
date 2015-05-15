@@ -6,17 +6,12 @@ static const int SIGNAL_DETECTION = 1;
 static const int SIGNAL_DETECTION = 0;
 #endif
 
+static volatile int tmp = 0;
 
-void sig_int_handler(const int sig)
-{
-    /* Ignore the signal */
-    signal(sig, SIG_IGN);
-}
-
-void sig_bg_handler(const int sig)
+void sig_bg_handler(int sig)
 {
     int status;
-    printf("Catch BG signal\n");
+    tmp++;
     waitpid(-1, &status, WUNTRACED);
 }
 
@@ -364,7 +359,7 @@ const int check_env(const char* input, int i)
     return 1;
 }
 
-const int general_cmd(char* input)
+const int general_cmd(char* input, const struct sigaction* act_int_old)
 {
     int background_process;
     int pipes[2];                   /* File descriptors from piping */
@@ -423,6 +418,8 @@ const int general_cmd(char* input)
     /* Child process */
     if (pid == 0)
     {
+        /* Restore normal interrupt behaviour */
+        sigaction(SIGINT, act_int_old, NULL);
         /* Measure execution time */
         time(&time_before);
         if (!fork_exec_cmd(cmd, pipes, fds, args, num_pipes, 0))
@@ -474,20 +471,25 @@ const int general_cmd(char* input)
 const int main(int argc, const char* argv[])
 {
     int status;
-    /* Define handler for SIGINT */
-    signal(SIGINT, sig_int_handler);
+    struct sigaction act_bg, act_int_old, act_int_new;
+    /* Define handler for SIGINT (ignore) */
+    act_int_new.sa_handler = SIG_IGN;
+    act_int_new.sa_flags = 0;
+    sigaction(SIGINT, &act_int_new, &act_int_old);
 
     /* Define hold signal */
     if (SIGNAL_DETECTION == 1)
     {
         sighold(BG_TERM);
-        signal(BG_TERM, sig_bg_handler);
+        act_bg.sa_handler = sig_bg_handler;
+        sigaction(BG_TERM, &act_bg, NULL);
     }
 
     while (1)
     {
         char input[80], cmd[80];
         int i;
+        printf("%d", tmp);
 
         /* Wait for all defunct children */
         /* Continue even if no child has exited */
@@ -520,7 +522,7 @@ const int main(int argc, const char* argv[])
         else if (cmd[0] == '\0')
             continue;
         else
-            general_cmd(input);
+            general_cmd(input, &act_int_old);
     }
 
     /* Release signal */
