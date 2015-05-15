@@ -156,7 +156,7 @@ int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
             if (dup2(pipes[fds[0]], fds[1]) < 0)
             {
                 perror("Failed to duplicate file descriptor for writing");
-                return 0;
+                _exit(1);
             }
         }
         if (fds[2] != -1 && fds[3] != -1)
@@ -165,7 +165,7 @@ int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
             if (dup2(pipes[fds[2]], fds[3]) < 0)
             {
                 perror("Failed to duplicate file descriptor for writing");
-                return 0;
+                _exit(1);
             }
         }
 
@@ -176,7 +176,7 @@ int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
             if (close(pipes[i]))
             {
                 perror("Failed to delete file descriptor");
-                return 0;
+                _exit(1);
             }
         }
 
@@ -187,7 +187,7 @@ int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
             if (execvp(cmd, args))
             {
                 perror("Failed to execute command");
-                return 0;
+                _exit(1);
             }
         }
         /* Execute command without arguments via path */
@@ -203,7 +203,7 @@ int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
                     if (execlp("more", cmd, NULL))
                     {
                         perror("Failed to execute command");
-                        return 0;
+                        _exit(1);
                     }
                 }
             }
@@ -212,7 +212,7 @@ int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
                 if (execlp(cmd, cmd, NULL))
                 {
                     perror("Failed to execute command");
-                    return 0;
+                    _exit(1);
                 }
             }
         }
