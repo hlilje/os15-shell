@@ -22,7 +22,7 @@ int print_prompt()
 }
 
 int read_cmd(char* cmd, const char* input, int i)
-{    
+{
     int j;
     /* Discard spaces */
     while (input[i] == ' ')
@@ -348,7 +348,7 @@ int general_cmd(char* input)
     int fds[4];                     /* File descriptors to dupe */
     int num_pipes = 1;              /* Number of pipes to create */
     pid_t pid;                      /* PID of child */
-    int status_p, status_c;         /* Wait status */
+    int status;                     /* Wait status */
     char* args[80];                 /* All arguments to the command */
     char arg[80];                   /* One argument to command */
     char cmd[80];                   /* The command to be executed */
@@ -406,7 +406,7 @@ int general_cmd(char* input)
             perror("Failed to execute command");
             return 0;
         }
-        if (wait(&status_c) < 0)
+        if (wait(&status) < 0)
         {
             perror("Failed to wait for executing process");
             return 0;
@@ -430,7 +430,7 @@ int general_cmd(char* input)
         /* waitpid(pid, &status, 0); */
         if (!background_process)
         {
-            if (waitpid(pid, &status_p, 0) < 0)
+            if (waitpid(pid, &status, 0) < 0)
             {
                 perror("Failed to wait for process");
                 return 0;
@@ -438,6 +438,16 @@ int general_cmd(char* input)
         }
     }
 
+    /* Let the parent processes close all pipes */
+    for (j = 0; j < num_pipes * 2; ++j)
+    {
+        printf("PARENT: Now closing %d\n", pipes[j]);
+        if (close(pipes[j]))
+        {
+            perror("Failed to delete file descriptor");
+            return 0;
+        }
+    }
 
     return 1;
 }
