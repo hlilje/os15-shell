@@ -15,6 +15,8 @@ void sig_int_handler(const int sig)
 
 void sig_bg_handler(const int sig)
 {
+    int status;
+    waitpid(-1, &status, WUNTRACED);
 }
 
 const int print_prompt()
@@ -57,10 +59,8 @@ const int read_cmd(char* cmd, const char* input, int i)
 
 void exit_shell()
 {
-    /* TODO Kill all children */
-
     /* Kill all processes of the same group */
-    /* TODO is this enough? */
+    /* TODO Is this enough to kill all children? */
     kill(0, SIGKILL);
     exit(0);
 }
@@ -286,7 +286,7 @@ const int check_env(const char* input, int i)
     fds[1] = -1;
     fds[2] = 1;
     fds[3] = WRITE;
-    if(!fork_exec_cmd("printenv", pipes, fds, NULL, num_pipes, 0))
+    if (!fork_exec_cmd("printenv", pipes, fds, NULL, num_pipes, 0))
     {
         perror("Failed to execute printenv");
         return 0;
@@ -479,14 +479,15 @@ const int main(int argc, const char* argv[])
         signal(BG_TERM, sig_bg_handler);
     }
 
-    while(1)
+    while (1)
     {
         char input[80], cmd[80];
         int i;
 
         /* Wait for all defunct children */
         /* Continue even if no child has exited */
-        while(waitpid(-1, &status, WNOHANG | WUNTRACED) > 0);
+        if (!(SIGNAL_DETECTION == 1))
+            while (waitpid(-1, &status, WNOHANG | WUNTRACED) > 0);
         /* Prompt */
         if (!print_prompt()) continue;
 
