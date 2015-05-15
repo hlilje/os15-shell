@@ -6,12 +6,9 @@ static const int SIGNAL_DETECTION = 1;
 static const int SIGNAL_DETECTION = 0;
 #endif
 
-static volatile int tmp = 0;
-
 void sig_bg_handler(int sig)
 {
     int status;
-    tmp++;
     waitpid(-1, &status, WUNTRACED);
 }
 
@@ -438,7 +435,8 @@ const int general_cmd(char* input, const struct sigaction* act_int_old)
         printf("%s finished executing in %ld seconds\n", cmd, time_after);
 
         /* Notify parent of termination */
-        if (SIGNAL_DETECTION == 1) kill(getppid(), BG_TERM);
+        if (SIGNAL_DETECTION == 1 && background_process)
+            kill(getppid(), SIGUSR1);
         _exit(0); /* exit() unreliable */
     }
     /* Error */
@@ -472,31 +470,27 @@ const int general_cmd(char* input, const struct sigaction* act_int_old)
 const int main(int argc, const char* argv[])
 {
     int status;
-    struct sigaction act_chld, act_int_old, act_int_new;
+    struct sigaction act_bg_term, act_int_old, act_int_new;
     /* Define handler for SIGINT (ignore) */
     act_int_new.sa_handler = SIG_IGN;
     act_int_new.sa_flags = 0;
     if (sigaction(SIGINT, &act_int_new, &act_int_old))
         perror("Failed to change handler for SIGINT");
 
-    /* Define hold signal */
+    /* Define handler for detecting background process termination */
     if (SIGNAL_DETECTION == 1)
     {
-        if (sighold(BG_TERM))
-            perror("Failed to add BG_TERM to signal mask");
-        act_chld.sa_handler = sig_bg_handler;
-        if (sigaction(BG_TERM, &act_chld, NULL))
-            perror("Failed to change handler for background process signal");
-        /*sigaction(SIGCHLD, NULL, &act_chld);
-        act_chld.sa_flags = act_chld.sa_flags | SA_NOCLDWAIT;
-        sigaction(SIGCHLD, &act_chld, NULL);*/
+        if (sigaction(SIGUSR1, NULL, &act_bg_term))
+            perror("Failed to get handler for SIGUSR1");
+        act_bg_term.sa_handler = sig_bg_handler;
+        if (sigaction(SIGUSR1, &act_bg_term, NULL))
+            perror("Failed to set handler for SIGUSR1");
     }
 
     while (1)
     {
         char input[80], cmd[80];
         int i;
-        printf("%d", tmp);
 
         /* Wait for all defunct children */
         /* Continue even if no child has exited */
@@ -531,11 +525,6 @@ const int main(int argc, const char* argv[])
         else
             general_cmd(input, &act_int_old);
     }
-
-    /* Release signal */
-    if (SIGNAL_DETECTION == 1)
-        if (sigrelse(BG_TERM))
-            perror("Failed to remove BG_TERM from signal mask");
 
     exit_shell();
 

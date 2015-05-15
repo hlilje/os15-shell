@@ -5,7 +5,6 @@
 
 #define READ  0
 #define WRITE 1
-#define BG_TERM 42
 
 #ifdef __APPLE__
 #include <limits.h>
