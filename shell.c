@@ -448,7 +448,7 @@ int main(int argc, const char* argv[])
         int i;
 
         /* Prompt */
-        if (!print_prompt()) exit(1);
+        if (!print_prompt()) continue;
 
         /* Exit if error occurs */
         if (!fgets(input, 80, stdin))
@@ -466,26 +466,15 @@ int main(int argc, const char* argv[])
         i = read_cmd(cmd, input, i);
 
         if (strcmp(cmd, "exit") == 0)
-        {
             exit_shell();
-        }
         else if (strcmp(cmd, "cd") == 0)
-        {
-            if (!cd(input, cmd, i)) break;
-        }
+            cd(input, cmd, i);
         else if (strcmp(cmd, "checkEnv") == 0)
-        {
-            if (!check_env(input, i)) break;
-        }
+            check_env(input, i);
         else if (cmd[0] == '\0')
-        {
-            /* Skip if no command was given */
             continue;
-        }
         else
-        {
-            if (!general_cmd(input)) break;
-        }
+            general_cmd(input);
     }
 
     return 0;
