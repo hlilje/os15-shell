@@ -483,6 +483,7 @@ const int main(int argc, const char* argv[])
         if (sigaction(SIGUSR1, NULL, &act_bg_term))
             perror("Failed to get handler for SIGUSR1");
         act_bg_term.sa_handler = sig_bg_handler;
+        act_bg_term.sa_flags = SA_RESTART;
         if (sigaction(SIGUSR1, &act_bg_term, NULL))
             perror("Failed to set handler for SIGUSR1");
     }
