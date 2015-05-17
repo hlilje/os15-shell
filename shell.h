@@ -1,8 +1,7 @@
 #define _XOPEN_SOURCE 500
 #define SIGDET 1
-
-#define READ STDIN_FILENO 
-#define WRITE STDOUT_FILENO 
+#define READ STDIN_FILENO
+#define WRITE STDOUT_FILENO
 #define ERROR STDERR_FILENO
 
 #ifdef __APPLE__
