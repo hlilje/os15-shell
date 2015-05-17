@@ -3,6 +3,7 @@
 
 #define READ STDIN_FILENO 
 #define WRITE STDOUT_FILENO 
+#define ERROR STDERR_FILENO
 
 #ifdef __APPLE__
 #include <limits.h>

@@ -96,7 +96,7 @@ const int create_pipes(int* pipes, const int num_pipes)
     /* 1st ix = read, 2nd ix = write */
     for (i = 0, j = 0; i < num_pipes * 2; i += 2, ++j)
     {
-        printf("Creating pipe %d\n", j);
+        /* printf("Creating pipe %d\n", j); */
         if (pipe(pipes + i))
         {
             perror("Failed to create pipe");
@@ -112,7 +112,7 @@ const int close_pipes(int* pipes, const int num_pipes)
     int i;
     for (i = 0; i < num_pipes * 2; ++i)
     {
-        printf("Now closing %d\n", pipes[i]);
+        /* printf("Now closing %d\n", pipes[i]); */
         if (close(pipes[i]))
         {
             perror("Failed to delete file descriptor");
@@ -131,13 +131,13 @@ const int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args
 
     if (args == NULL)
     {
-        printf("Execute command %s with fds %d, %d, %d, %d (no args)\n",
-                cmd, fds[0], fds[1], fds[2], fds[3]);
+        /* printf("Execute command %s with fds %d, %d, %d, %d (no args)\n", */
+        /*         cmd, fds[0], fds[1], fds[2], fds[3]); */
     }
     else
     {
-        printf("Execute command %s with fds %d, %d, %d, %d (args)\n", cmd,
-                fds[0], fds[1], fds[2], fds[3]);
+        /* printf("Execute command %s with fds %d, %d, %d, %d (args)\n", cmd, */
+        /*         fds[0], fds[1], fds[2], fds[3]); */
     }
 
     /* Fork to create new process */
@@ -151,11 +151,11 @@ const int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args
     /* Child process goes here, parent just returns */
     else if (pid == 0)
     {
-        printf("CHILD: Now executing in child process\n");
+        /* printf("CHILD: Now executing in child process\n"); */
         /* Copy and overwrite file descriptor if set to do so */
         if (fds[0] != -1 && fds[1] != -1)
         {
-            printf("CHILD: Dup fds for READ %d, %d\n", fds[0], fds[1]);
+            /* printf("CHILD: Dup fds for READ %d, %d\n", fds[0], fds[1]); */
             if (dup2(pipes[fds[0]], fds[1]) < 0)
             {
                 perror("Failed to duplicate file descriptor for writing");
@@ -164,7 +164,7 @@ const int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args
         }
         if (fds[2] != -1 && fds[3] != -1)
         {
-            printf("CHILD: Dup fds for WRITE %d, %d\n", fds[2], fds[3]);
+            /* printf("CHILD: Dup fds for WRITE %d, %d\n", fds[2], fds[3]); */
             if (dup2(pipes[fds[2]], fds[3]) < 0)
             {
                 perror("Failed to duplicate file descriptor for writing");
@@ -175,7 +175,7 @@ const int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args
         /* Delete all file descriptors for the child process */
         for (i = 0; i < num_pipes * 2; ++i)
         {
-            printf("CHILD: Now closing %i\n", pipes[i]);
+            /* printf("CHILD: Now closing %i\n", pipes[i]); */
             if (close(pipes[i]))
             {
                 perror("Failed to delete file descriptor");
@@ -186,26 +186,26 @@ const int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args
         /* Execute command with arguments via path */
         if (args != NULL)
         {
-            printf("CHILD: Execute command with args\n");
+            /* printf("CHILD: Execute command with args\n"); */
             if (execvp(cmd, args))
             {
-                perror("Failed to execute command");
+                perror(cmd);
                 _exit(1);
             }
         }
         /* Execute command without arguments via path */
         else
         {
-            printf("CHILD: Execute command w/o args\n");
+            /* printf("CHILD: Execute command w/o args\n"); */
             /* Special case to try more if less fails */
             if (try_less_more)
             {
                 if (execlp("less", cmd, NULL))
                 {
-                    printf("CHILD: Failed to execute less\n");
+                    /* printf("CHILD: Failed to execute less\n"); */
                     if (execlp("more", cmd, NULL))
                     {
-                        perror("Failed to execute command");
+                        perror(cmd);
                         _exit(1);
                     }
                 }
@@ -214,14 +214,14 @@ const int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args
             {
                 if (execlp(cmd, cmd, NULL))
                 {
-                    perror("Failed to execute command");
+                    perror(cmd);
                     _exit(1);
                 }
             }
         }
     }
 
-    printf("PARENT: Now exiting fork_exec_cmd\n");
+    /* printf("PARENT: Now exiting fork_exec_cmd\n"); */
 
     return 1;
 }
@@ -344,7 +344,7 @@ const int check_env(const char* input, int i)
     /* Let the parent processes wait for all children */
     for (j = 0; j < num_pipes + 1; ++j)
     {
-        printf("PARENT: Wait for process %d\n", j);
+        /* printf("PARENT: Wait for process %d\n", j); */
         /* Wait for the processes to finish */
         if (wait(&status) < 0)
         {
@@ -417,22 +417,6 @@ const int general_cmd(char* input, const struct sigaction* act_int_old,
     /* Child process */
     if (pid == 0)
     {
-        /* Restore normal interrupt behaviour */
-        if (sigaction(SIGINT, act_int_old, NULL))
-            perror("Failed to change handler for SIGINT in child");
-        /* Measure execution time */
-        time(&time_before);
-        if (!fork_exec_cmd(cmd, pipes, fds, args, num_pipes, 0))
-        {
-            perror("Failed to execute command");
-            return 0;
-        }
-        if (wait(&status) < 0)
-        {
-            perror("Failed to wait for executing process");
-            return 0;
-        }
-
         /* Save current stdout file descriptor */
         out_fds = dup(WRITE);
         if (out_fds == -1)
@@ -441,10 +425,17 @@ const int general_cmd(char* input, const struct sigaction* act_int_old,
             return 0;
         }
 
-        /* Write termination info to background process pipe */
+        /* Write termination info to process info pipe */
         if (dup2(bg_pipes[1], WRITE) < 0)
         {
             perror("Failed to duplicate file descriptor for writing");
+            return 0;
+        }
+
+        /* Write err info to process info process pipe */
+        if (dup2(bg_pipes[1], ERROR) < 0)
+        {
+            perror("Failed to duplicate file descriptor for errors");
             return 0;
         }
 
@@ -452,6 +443,22 @@ const int general_cmd(char* input, const struct sigaction* act_int_old,
         if (close(bg_pipes[1]))
         {
             perror("Failed to delete file descriptor");
+            return 0;
+        }
+
+        /* Restore normal interrupt behaviour */
+        if (sigaction(SIGINT, act_int_old, NULL))
+            perror("Failed to change handler for SIGINT in child");
+        /* Measure execution time */
+        time(&time_before);
+        if (!fork_exec_cmd(cmd, pipes, fds, args, num_pipes, 0))
+        {
+            perror(cmd);
+            return 0;
+        }
+        if (wait(&status) < 0)
+        {
+            perror("Failed to wait for executing process");
             return 0;
         }
 
@@ -533,9 +540,9 @@ const int print_process_info(const int* bg_pipes)
         /* read does not null-terminate */
         buffer[read_bytes] = '\0';
 
-        printf("====== Now printing buffered output ======\n");
+        /* printf("====== Now printing buffered output ======\n"); */
         printf("%s", buffer);
-        printf("====== Done printing buffered output ======\n");
+        /* printf("====== Done printing buffered output ======\n"); */
     }
 
     return 1;
@@ -579,7 +586,8 @@ const int main(int argc, const char* argv[])
         /* Continue even if no child has exited */
         if (!(SIGNAL_DETECTION == 1))
             while (waitpid(-1, &status, WNOHANG | WUNTRACED) > 0);
-        /* Prompt */
+
+        /* Print prompt */
         if (!print_prompt()) continue;
 
         /* Exit if error occurs */
@@ -603,7 +611,7 @@ const int main(int argc, const char* argv[])
             cd(input, cmd, i);
         else if (strcmp(cmd, "checkEnv") == 0)
             check_env(input, i);
-        else if (cmd[0] == '\0') {}
+        else if (cmd[0] == '\0') {} /* Just print process info */
         else
             general_cmd(input, &act_int_old, bg_pipes);
 
