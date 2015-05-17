@@ -75,7 +75,7 @@ const int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args
         const int num_pipes, const int try_less_more);
 
 /**
- * Check environment variables
+ * Check environment variables.
  * Return 0 upon failure and 1 upon success.
  */
 const int check_env(const char* input, int i);
@@ -88,7 +88,7 @@ const int general_cmd(char* input, const struct sigaction* act_int_old,
         const int* bg_pipes);
 
 /**
- * Print accumulated process info
+ * Print accumulated process info.
  * Return 0 upon failure and 1 upon success.
  */
 const int print_process_info(const int* bg_pipes);
