@@ -1,24 +1,25 @@
-/* Needed for signals */
 #define _XOPEN_SOURCE 500
-/* Handle background processes by signals */
 #define SIGDET 1
 
-#define READ  0
-#define WRITE 1
+#define READ STDIN_FILENO 
+#define WRITE STDOUT_FILENO 
 
 #ifdef __APPLE__
 #include <limits.h>
 #else
 #include <linux/limits.h>
 #endif
+#include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/select.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <unistd.h>
 #include <time.h>
+#include <unistd.h>
 
 
 /**
@@ -83,4 +84,11 @@ const int check_env(const char* input, int i);
  * Execute arbitrary commands given to the shell.
  * Return 0 upon failure and 1 upon success.
  */
-const int general_cmd(char* input, const struct sigaction* act_int_old);
+const int general_cmd(char* input, const struct sigaction* act_int_old,
+        const int* bg_pipes);
+
+/**
+ * Print accumulated process info
+ * Return 0 upon failure and 1 upon success.
+ */
+const int print_process_info(const int* bg_pipes);

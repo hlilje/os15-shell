@@ -356,11 +356,13 @@ const int check_env(const char* input, int i)
     return 1;
 }
 
-const int general_cmd(char* input, const struct sigaction* act_int_old)
+const int general_cmd(char* input, const struct sigaction* act_int_old,
+        const int* bg_pipes)
 {
     int background_process;
     int pipes[2];                   /* File descriptors from piping */
     int fds[4];                     /* File descriptors to dupe */
+    int out_fds;                    /* Saved stdout file descriptor */
     int num_pipes = 1;              /* Number of pipes to create */
     pid_t pid;                      /* PID of child */
     int status;                     /* Wait status */
@@ -430,9 +432,40 @@ const int general_cmd(char* input, const struct sigaction* act_int_old)
             perror("Failed to wait for executing process");
             return 0;
         }
+
+        /* Save current stdout file descriptor */
+        out_fds = dup(WRITE);
+        if (out_fds == -1)
+        {
+            perror("Failed to copy current file descriptor for writing");
+            return 0;
+        }
+
+        /* Write termination info to background process pipe */
+        if (dup2(bg_pipes[1], WRITE) < 0)
+        {
+            perror("Failed to duplicate file descriptor for writing");
+            return 0;
+        }
+
+        /* Close file descriptor */
+        if (close(bg_pipes[1]))
+        {
+            perror("Failed to delete file descriptor");
+            return 0;
+        }
+
+        /* Calculate execution time */
         time(&time_after);
         time_after = time_after - time_before;
         printf("%s finished executing in %ld seconds\n", cmd, time_after);
+
+        /* Redirect output as before */
+        if (dup2(out_fds, WRITE) < 0)
+        {
+            perror("Failed to reset output file descriptor");
+            return 0;
+        }
 
         /* Notify parent of termination */
         if (SIGNAL_DETECTION == 1 && background_process)
@@ -449,8 +482,6 @@ const int general_cmd(char* input, const struct sigaction* act_int_old)
     else
     {
         /* The parent process comes here after forking */
-        /* int status; */
-        /* waitpid(pid, &status, 0); */
         if (!background_process)
         {
             if (waitpid(pid, &status, 0) < 0)
@@ -467,9 +498,52 @@ const int general_cmd(char* input, const struct sigaction* act_int_old)
     return 1;
 }
 
+const int print_process_info(const int* bg_pipes)
+{
+    /* TODO Determine which size to use */
+    char buffer[201];
+    fd_set rfds;
+    struct timeval tv;
+    int retval, read_bytes;
+
+    /* Check fd immediately when calling */
+    FD_ZERO(&rfds);
+    FD_SET(bg_pipes[0], &rfds);
+    tv.tv_sec = 0;
+    tv.tv_usec = 0;
+
+    retval = select(bg_pipes[0] + 1, &rfds, NULL, NULL, &tv);
+
+    /* First check if file descriptor has data available, since non-blocking */
+    if (retval == -1)
+    {
+        perror("Failed to check file descriptor");
+        return 0;
+    }
+    else if (retval)
+    {
+        read_bytes = read(bg_pipes[0], buffer, 200);
+        /* Read buffered output into buffer */
+        if (read_bytes == -1)
+        {
+            perror("Failed to read file descriptor");
+            return 0;
+        }
+
+        /* read does not null-terminate */
+        buffer[read_bytes] = '\0';
+
+        printf("====== Now printing buffered output ======\n");
+        printf("%s", buffer);
+        printf("====== Done printing buffered output ======\n");
+    }
+
+    return 1;
+}
+
 const int main(int argc, const char* argv[])
 {
-    int status;
+    int status, bg_pipes[2], num_pipes, flags;
     struct sigaction act_bg_term, act_int_old, act_int_new;
     /* Define handler for SIGINT (ignore) */
     act_int_new.sa_handler = SIG_IGN;
@@ -487,6 +561,14 @@ const int main(int argc, const char* argv[])
         if (sigaction(SIGUSR1, &act_bg_term, NULL))
             perror("Failed to set handler for SIGUSR1");
     }
+
+    /* Create pipe for printing background process info */
+    num_pipes = 1;
+    create_pipes(bg_pipes, num_pipes);
+
+    /* Configure pipe to be non-blocking on read end */
+    flags = fcntl(bg_pipes[0], F_GETFL, 0);
+    fcntl(bg_pipes[0], F_SETFL, flags | O_NONBLOCK);
 
     while (1)
     {
@@ -521,11 +603,16 @@ const int main(int argc, const char* argv[])
             cd(input, cmd, i);
         else if (strcmp(cmd, "checkEnv") == 0)
             check_env(input, i);
-        else if (cmd[0] == '\0')
-            continue;
+        else if (cmd[0] == '\0') {}
         else
-            general_cmd(input, &act_int_old);
+            general_cmd(input, &act_int_old, bg_pipes);
+
+        /* Print accumulated process information */
+        print_process_info(bg_pipes);
     }
+
+    /* Close pipe for printing background process info */
+    close_pipes(bg_pipes, num_pipes);
 
     exit_shell();
 
