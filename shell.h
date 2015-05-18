@@ -23,7 +23,7 @@
 
 
 /**
- * Handle BG_TERM.
+ * Handle background process signals.
  */
 void sig_bg_handler(const int sig);
 
