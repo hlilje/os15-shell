@@ -53,7 +53,6 @@ const int read_cmd(char* cmd, const char* input, int i)
 void exit_shell()
 {
     /* Kill all processes of the same group */
-    /* TODO Is this enough to kill all children? */
     kill(0, SIGKILL);
     exit(0);
 }
@@ -359,20 +358,21 @@ const int check_env(const char* input, int i)
 const int general_cmd(char* input, const struct sigaction* act_int_old,
         const int* bg_pipes)
 {
-    int background_process;
-    int pipes[2];                   /* File descriptors from piping */
-    int fds[4];                     /* File descriptors to dupe */
-    int out_fds;                    /* Saved stdout file descriptor */
-    int num_pipes = 1;              /* Number of pipes to create */
-    pid_t pid;                      /* PID of child */
-    int status;                     /* Wait status */
-    char* args[80];                 /* All arguments to the command */
-    char arg[80];                   /* One argument to command */
-    char cmd[80];                   /* The command to be executed */
-    int j = 1;                      /* Loop index */
-    int i;                          /* Command index */
-    time_t time_before;             /* Time before execution of command */
-    time_t time_after;              /* Time after execution of command */
+    int pipes[2];                 /* File descriptors from piping */
+    int fds[4];                   /* File descriptors to dupe */
+    int background_process;       /* Whether to run in the background */
+    int out_fds;                  /* Saved stdout file descriptor */
+    int status;                   /* Wait status */
+    int i;                        /* Command index */
+    int j = 1;                    /* Loop index */
+    int num_pipes = 1;            /* Number of pipes to create */
+    char* args[80];               /* All arguments to the command */
+    char arg[80];                 /* One argument to command */
+    char cmd[80];                 /* The command to be executed */
+    unsigned long exec_time;      /* Execution time */
+    pid_t pid;                    /* PID of child */
+    struct timeval time_before;   /* Time before execution of command */
+    struct timeval time_after;    /* Time after execution of command */
 
     create_pipes(pipes, num_pipes);
     fds[0] = -1;
@@ -449,8 +449,10 @@ const int general_cmd(char* input, const struct sigaction* act_int_old,
         /* Restore normal interrupt behaviour */
         if (sigaction(SIGINT, act_int_old, NULL))
             perror("Failed to change handler for SIGINT in child");
+
         /* Measure execution time */
-        time(&time_before);
+        gettimeofday(&time_before, NULL);
+
         if (!fork_exec_cmd(cmd, pipes, fds, args, num_pipes, 0))
         {
             perror(cmd);
@@ -463,9 +465,10 @@ const int general_cmd(char* input, const struct sigaction* act_int_old,
         }
 
         /* Calculate execution time */
-        time(&time_after);
-        time_after = time_after - time_before;
-        printf("%s finished executing in %ld seconds\n", cmd, time_after);
+        gettimeofday(&time_after, NULL);
+        exec_time = 1000 * (time_after.tv_sec - time_before.tv_sec) +
+        (time_after.tv_usec - time_before.tv_usec) / 1000;
+        printf("%s finished executing in %lu ms\n", cmd, exec_time);
 
         /* Redirect output as before */
         if (dup2(out_fds, WRITE) < 0)
