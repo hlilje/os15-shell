@@ -12,7 +12,7 @@ void sig_bg_handler(int sig)
     waitpid(-1, &status, WUNTRACED);
 }
 
-const int print_prompt()
+int print_prompt()
 {
     char wd[PATH_MAX];
 
@@ -26,7 +26,7 @@ const int print_prompt()
     return 1;
 }
 
-const int read_cmd(char* cmd, const char* input, int i)
+int read_cmd(char* cmd, const char* input, int i)
 {
     int j;
     /* Discard spaces */
@@ -60,7 +60,7 @@ void exit_shell()
     exit(0);
 }
 
-const int cd(const char* input, char* cmd, int i)
+int cd(const char* input, char* cmd, int i)
 {
     /* Change to home directory */
     if (input[i] == '\0' || input[i] == '~')
@@ -91,7 +91,7 @@ const int cd(const char* input, char* cmd, int i)
     return 1;
 }
 
-const int create_pipes(int* pipes, const int num_pipes)
+int create_pipes(int* pipes, const int num_pipes)
 {
     int i, j;
     /* Pipe and get file descriptors */
@@ -109,7 +109,7 @@ const int create_pipes(int* pipes, const int num_pipes)
     return 1;
 }
 
-const int close_pipes(int* pipes, const int num_pipes)
+int close_pipes(int* pipes, const int num_pipes)
 {
     int i;
     for (i = 0; i < num_pipes * 2; ++i)
@@ -125,7 +125,7 @@ const int close_pipes(int* pipes, const int num_pipes)
     return 1;
 }
 
-const int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
+int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
         const int num_pipes, const int try_less_more)
 {
     pid_t pid;
@@ -228,7 +228,7 @@ const int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args
     return 1;
 }
 
-const int check_env(const char* input, int i)
+int check_env(const char* input, int i)
 {
     int pipes[6];                   /* File descriptors from piping */
     int fds[4];                     /* File descriptors to dupe */
@@ -358,7 +358,7 @@ const int check_env(const char* input, int i)
     return 1;
 }
 
-const int general_cmd(char* input, const struct sigaction* act_int_old,
+int general_cmd(char* input, const struct sigaction* act_int_old,
         const int* bg_pipes)
 {
     int pipes[2];                 /* File descriptors from piping */
@@ -506,7 +506,7 @@ const int general_cmd(char* input, const struct sigaction* act_int_old,
     return 1;
 }
 
-const int print_process_info(const int* bg_pipes)
+int print_process_info(const int* bg_pipes)
 {
     char buffer[128];
     fd_set rfds;
@@ -554,7 +554,7 @@ const int print_process_info(const int* bg_pipes)
     return 1;
 }
 
-const int main(int argc, const char* argv[])
+int main(int argc, const char* argv[])
 {
     int status, bg_pipes[2], num_pipes, flags;
     struct sigaction act_bg_term, act_int_old, act_int_new;

@@ -31,13 +31,13 @@ void sig_bg_handler(const int sig);
  * Print the prompt.
  * Return 0 upon failure and 1 upon success.
  */
-const int print_prompt();
+int print_prompt();
 
 /**
  * Read one command from input into cmd.
  * Return the new index i.
  */
-const int read_cmd(char* cmd, const char* input, int i);
+int read_cmd(char* cmd, const char* input, int i);
 
 /**
  * Exit the shell.
@@ -48,19 +48,19 @@ void exit_shell();
  * Change directory.
  * Return 0 upon failure and 1 upon success.
  */
-const int cd(const char* input, char* cmd, int i);
+int cd(const char* input, char* cmd, int i);
 
 /**
  * Create the given number of pipes.
  * Return 0 upon failure and 1 upon success.
  */
-const int create_pipes(int* pipes, const int num_pipes);
+int create_pipes(int* pipes, const int num_pipes);
 
 /**
  * Close the given number of pipes.
  * Return 0 upon failure and 1 upon success.
  */
-const int close_pipes(int* pipes, const int num_pipes);
+int close_pipes(int* pipes, const int num_pipes);
 
 /**
  * Fork and execute the given command.
@@ -71,24 +71,24 @@ const int close_pipes(int* pipes, const int num_pipes);
  * if less fails.
  * Return 0 upon failure and 1 upon success.
  */
-const int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
+int fork_exec_cmd(const char* cmd, int* pipes, const int* fds, char** args,
         const int num_pipes, const int try_less_more);
 
 /**
  * Check environment variables.
  * Return 0 upon failure and 1 upon success.
  */
-const int check_env(const char* input, int i);
+int check_env(const char* input, int i);
 
 /**
  * Execute arbitrary commands given to the shell.
  * Return 0 upon failure and 1 upon success.
  */
-const int general_cmd(char* input, const struct sigaction* act_int_old,
+int general_cmd(char* input, const struct sigaction* act_int_old,
         const int* bg_pipes);
 
 /**
  * Print accumulated process info.
  * Return 0 upon failure and 1 upon success.
  */
-const int print_process_info(const int* bg_pipes);
+int print_process_info(const int* bg_pipes);
