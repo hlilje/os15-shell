@@ -52,7 +52,11 @@ const int read_cmd(char* cmd, const char* input, int i)
 void exit_shell()
 {
     /* Kill all processes of the same group */
-    kill(0, SIGKILL);
+    if (kill(0, SIGKILL))
+    {
+        perror("Failed to kill all processes of the same group");
+        exit(1);
+    }
     exit(0);
 }
 
@@ -466,7 +470,14 @@ const int general_cmd(char* input, const struct sigaction* act_int_old,
 
         /* Notify parent of termination */
         if (SIGNAL_DETECTION == 1 && background_process)
-            kill(getppid(), SIGUSR1);
+        {
+            if (kill(getppid(), SIGUSR1))
+            {
+                perror("Failed to notify parent of termination");
+                return 0;
+            }
+        }
+
         _exit(0); /* exit() unreliable */
     }
     /* Error */
