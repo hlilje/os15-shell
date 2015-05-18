@@ -361,7 +361,6 @@ const int general_cmd(char* input, const struct sigaction* act_int_old,
     int pipes[2];                 /* File descriptors from piping */
     int fds[4];                   /* File descriptors to dupe */
     int background_process;       /* Whether to run in the background */
-    int out_fds;                  /* Saved stdout file descriptor */
     int status;                   /* Wait status */
     int i;                        /* Command index */
     int j = 1;                    /* Loop index */
@@ -418,32 +417,28 @@ const int general_cmd(char* input, const struct sigaction* act_int_old,
     if (pid == 0)
     {
         /* Save current stdout file descriptor */
-        out_fds = dup(WRITE);
-        if (out_fds == -1)
+        if (background_process)
         {
-            perror("Failed to copy current file descriptor for writing");
-            return 0;
-        }
+            /* Write termination info to process info pipe */
+            if (dup2(bg_pipes[1], WRITE) < 0)
+            {
+                perror("Failed to duplicate file descriptor for writing");
+                return 0;
+            }
 
-        /* Write termination info to process info pipe */
-        if (dup2(bg_pipes[1], WRITE) < 0)
-        {
-            perror("Failed to duplicate file descriptor for writing");
-            return 0;
-        }
+            /* Write err info to process info process pipe */
+            if (dup2(bg_pipes[1], ERROR) < 0)
+            {
+                perror("Failed to duplicate file descriptor for errors");
+                return 0;
+            }
 
-        /* Write err info to process info process pipe */
-        if (dup2(bg_pipes[1], ERROR) < 0)
-        {
-            perror("Failed to duplicate file descriptor for errors");
-            return 0;
-        }
-
-        /* Close file descriptor */
-        if (close(bg_pipes[1]))
-        {
-            perror("Failed to delete file descriptor");
-            return 0;
+            /* Close file descriptor */
+            if (close(bg_pipes[1]))
+            {
+                perror("Failed to delete file descriptor");
+                return 0;
+            }
         }
 
         /* Restore normal interrupt behaviour */
@@ -469,13 +464,6 @@ const int general_cmd(char* input, const struct sigaction* act_int_old,
         exec_time = 1000 * (time_after.tv_sec - time_before.tv_sec) +
         (time_after.tv_usec - time_before.tv_usec) / 1000;
         printf("%s finished executing in %lu ms\n", cmd, exec_time);
-
-        /* Redirect output as before */
-        if (dup2(out_fds, WRITE) < 0)
-        {
-            perror("Failed to reset output file descriptor");
-            return 0;
-        }
 
         /* Notify parent of termination */
         if (SIGNAL_DETECTION == 1 && background_process)
@@ -510,8 +498,7 @@ const int general_cmd(char* input, const struct sigaction* act_int_old,
 
 const int print_process_info(const int* bg_pipes)
 {
-    /* TODO Determine which size to use */
-    char buffer[201];
+    char buffer[128];
     fd_set rfds;
     struct timeval tv;
     int retval, read_bytes;
@@ -522,30 +509,36 @@ const int print_process_info(const int* bg_pipes)
     tv.tv_sec = 0;
     tv.tv_usec = 0;
 
-    retval = select(bg_pipes[0] + 1, &rfds, NULL, NULL, &tv);
+    /* Loop over all text in pipe */
+    read_bytes = 1;
+    while (read_bytes > 0)
+    {
+        read_bytes = 0;
+        retval = select(bg_pipes[0] + 1, &rfds, NULL, NULL, &tv);
 
-    /* First check if file descriptor has data available, since non-blocking */
-    if (retval == -1)
-    {
-        perror("Failed to check file descriptor");
-        return 0;
-    }
-    else if (retval)
-    {
-        read_bytes = read(bg_pipes[0], buffer, 200);
-        /* Read buffered output into buffer */
-        if (read_bytes == -1)
+        /* First check if file descriptor has data available, since non-blocking */
+        if (retval == -1)
         {
-            perror("Failed to read file descriptor");
+            perror("Failed to check file descriptor");
             return 0;
         }
+        else if (retval)
+        {
+            read_bytes = read(bg_pipes[0], buffer, 127);
+            /* Read buffered output into buffer */
+            if (read_bytes == -1)
+            {
+                perror("Failed to read file descriptor");
+                return 0;
+            }
 
-        /* read does not null-terminate */
-        buffer[read_bytes] = '\0';
+            /* read does not null-terminate */
+            buffer[read_bytes] = '\0';
 
-        /* printf("====== Now printing buffered output ======\n"); */
-        printf("%s", buffer);
-        /* printf("====== Done printing buffered output ======\n"); */
+            /* printf("====== Now printing buffered output ======\n"); */
+            printf("%s", buffer);
+            /* printf("====== Done printing buffered output ======\n"); */
+        }
     }
 
     return 1;
