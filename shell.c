@@ -37,7 +37,6 @@ const int read_cmd(char* cmd, const char* input, int i)
     for (j = 0; ; ++i, ++j)
     {
         cmd[j] = input[i];
-        /* TODO Check for escaped spaces */
         if (input[i] == ' ' || input[i] == '\0')
         {
             /* Let i be the next non-space character */
