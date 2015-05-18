@@ -453,7 +453,7 @@ const int general_cmd(char* input, const struct sigaction* act_int_old,
             perror(cmd);
             return 0;
         }
-        if (wait(&status) < 0)
+        if ((pid = wait(&status)) < 0)
         {
             perror("Failed to wait for executing process");
             return 0;
@@ -463,7 +463,7 @@ const int general_cmd(char* input, const struct sigaction* act_int_old,
         gettimeofday(&time_after, NULL);
         exec_time = 1000 * (time_after.tv_sec - time_before.tv_sec) +
         (time_after.tv_usec - time_before.tv_usec) / 1000;
-        printf("%s finished executing in %lu ms\n", cmd, exec_time);
+        printf("(pid: %d) %s finished executing in %lu ms.\n", pid, cmd, exec_time);
 
         /* Notify parent of termination */
         if (SIGNAL_DETECTION == 1 && background_process)
